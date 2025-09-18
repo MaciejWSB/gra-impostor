@@ -1,0 +1,209 @@
+const wordDatabase = {
+    'Klasyczne Słowa': {
+        'easy': { 'Jabłko': 'Owoc', 'Krzesło': 'Mebel', 'Drzwi': 'Wejście', 'Chleb': 'Piekarnia', 'Klucz': 'Zamek' },
+        'medium': { 'Komputer': 'Elektronika', 'Teleskop': 'Kosmos', 'Most': 'Rzeka', 'Pustynia': 'Piasek', 'Biblioteka': 'Książki' },
+        'hard': { 'Grawitacja': 'Siła', 'Metafora': 'Literatura', 'Fotosynteza': 'Roślina', 'Demokracja': 'Polityka', 'Inflacja': 'Ekonomia' }
+    },
+    'League of Legends': {
+        'easy': { 'Baron': 'Wzmocnienie', 'Wieża': 'Struktura', 'Minion': 'Farma', 'NEXUS': 'Baza', 'Gank': 'Dżungler' },
+        'medium': { 'Inhibitor': 'Superminion', 'Smok': 'Dusza', 'Dżungla': 'Potwory', 'Ward': 'Wizja', 'Flash': 'Czar' },
+        'hard': { 'Kiting': 'ADC', 'Split push': 'Presja', 'Roaming': 'Wsparcie', 'Peel': 'Obrońca', 'Wave management': 'Kontrola' }
+    }
+};
+
+const gameRooms = {};
+
+function getMaxImpostors(playerCount) {
+    if (playerCount < 3) return 1;
+    return Math.floor((playerCount - 1) / 2);
+}
+
+function getRevealStatus(room) {
+    const revealedCount = room.revealedPlayers.size;
+    const totalPlayers = room.players.length;
+    const unrevealedNames = room.players
+        .filter(player => !room.revealedPlayers.has(player.id))
+        .map(player => `<strong>${player.name}</strong>`);
+    return { revealedCount, totalPlayers, unrevealedNames };
+}
+
+function initiateGame(roomCode, io) {
+    const room = gameRooms[roomCode];
+    if (!room) return;
+
+    room.gameState = 'revealing';
+    room.revealedPlayers = new Set();
+    room.eliminatedPlayers = [];
+    room.votesAvailable = room.settings.randomImpostors ? room.players.length + 1 : room.settings.impostors;
+    room.currentRound = (room.currentRound || 0) + 1;
+    room.roundActions = { votesToEndRound: new Set(), votesToEliminate: {} };
+    room.playerOrder = room.players.map(p => p.id).sort(() => Math.random() - 0.5);
+    room.currentPlayerIndex = 0;
+
+    const players = room.players;
+    const settings = room.settings;
+
+    const wordSet = wordDatabase[settings.category]?.[settings.difficulty] || wordDatabase['Klasyczne Słowa']['easy'];
+    const allWords = Object.keys(wordSet);
+    let availableWords = allWords.filter(word => !room.usedWords.has(word));
+
+    if (availableWords.length === 0) {
+        room.usedWords.clear();
+        availableWords = allWords;
+    }
+
+    room.chosenWord = availableWords[Math.floor(Math.random() * availableWords.length)];
+    room.usedWords.add(room.chosenWord);
+    const hint = wordSet[room.chosenWord];
+
+    let impostorIds = new Set();
+    let playersCopy = [...players];
+    let impostorsInThisRound = settings.impostors;
+
+    if (settings.randomImpostors) {
+        const maxImpostors = players.length;
+        impostorsInThisRound = Math.floor(Math.random() * (maxImpostors + 1));
+    }
+
+    for (let i = 0; i < impostorsInThisRound; i++) {
+        if (playersCopy.length === 0) break;
+        const randomIndex = Math.floor(Math.random() * playersCopy.length);
+        impostorIds.add(playersCopy[randomIndex].id);
+        playersCopy.splice(randomIndex, 1);
+    }
+    room.impostorIds = impostorIds;
+
+    players.forEach(player => {
+        const isImpostor = impostorIds.has(player.id);
+        player.role = isImpostor ? 'impostor' : 'crewmate';
+        let dataToSend = {
+            role: player.role,
+            password: isImpostor ? null : room.chosenWord,
+            hint: (isImpostor && settings.impostorHint) ? hint : null,
+            isRandomMode: settings.randomImpostors
+        };
+        io.to(player.id).emit('gameStarted', dataToSend);
+    });
+
+    io.to(roomCode).emit('updateRevealStatus', getRevealStatus(room));
+}
+
+function getNextStartingPlayer(room) {
+    if (!room.playerOrder || room.playerOrder.length === 0) {
+        const activePlayers = room.players.filter(p => !room.eliminatedPlayers.includes(p.id));
+        return activePlayers[Math.floor(Math.random() * activePlayers.length)];
+    }
+
+    const currentStartingPlayerId = room.playerOrder[room.currentPlayerIndex];
+    if (room.eliminatedPlayers.includes(currentStartingPlayerId)) {
+        let nextIndex = room.currentPlayerIndex;
+        let loops = 0;
+        do {
+            nextIndex = (nextIndex + 1) % room.playerOrder.length;
+            loops++;
+        } while (room.eliminatedPlayers.includes(room.playerOrder[nextIndex]) && loops < room.players.length * 2);
+        room.currentPlayerIndex = nextIndex;
+    }
+    
+    const nextPlayerId = room.playerOrder[room.currentPlayerIndex];
+    return room.players.find(p => p.id === nextPlayerId);
+}
+
+function checkWinConditions(room, roomCode, io) {
+    const activePlayers = room.players.filter(p => !room.eliminatedPlayers.includes(p.id));
+    const activeImpostors = activePlayers.filter(p => p.role === 'impostor' && !room.eliminatedPlayers.includes(p.id));
+    let gameOverData = null;
+
+    if (activeImpostors.length === 0) {
+        gameOverData = { winner: 'crewmates', scores: room.players };
+    } else if (activeImpostors.length >= activePlayers.length / 2) {
+        gameOverData = { winner: 'impostors', scores: room.players };
+    } else if (room.votesAvailable <= 0 && !room.settings.randomImpostors) {
+        gameOverData = { winner: 'impostors', scores: room.players };
+    }
+
+    if (gameOverData) {
+        gameOverData.currentRound = room.currentRound;
+        gameOverData.totalRounds = room.settings.rounds;
+        gameOverData.impostors = room.players.filter(p => room.impostorIds.has(p.id)).map(p => p.name);
+        gameOverData.password = room.chosenWord;
+        if (room.currentRound >= room.settings.rounds) gameOverData.isFinal = true;
+        setTimeout(() => io.to(roomCode).emit('gameOver', gameOverData), 3000);
+    } else {
+        setTimeout(() => {
+            const nextPlayer = getNextStartingPlayer(room);
+            io.to(roomCode).emit('newRound', { startingPlayerName: nextPlayer.name, newPlayerCount: activePlayers.length });
+        }, 3000);
+    }
+}
+
+function checkActionsAndProceed(room, roomCode, io) {
+    const activePlayers = room.players.filter(p => !room.eliminatedPlayers.includes(p.id));
+    const totalPlayers = activePlayers.length;
+
+    const votesToEliminateCount = Object.keys(room.roundActions.votesToEliminate).length;
+    const votesToEndRoundCount = room.roundActions.votesToEndRound.size;
+    const totalActionsTaken = votesToEliminateCount + votesToEndRoundCount;
+
+    io.to(roomCode).emit('updateActionCounts', {
+        toEliminate: votesToEliminateCount,
+        toEndRound: votesToEndRoundCount,
+        totalPlayers: totalPlayers
+    });
+
+    if (totalActionsTaken === totalPlayers && totalPlayers > 0) {
+        if (votesToEliminateCount > votesToEndRoundCount) {
+            const voteCounts = {};
+            Object.values(room.roundActions.votesToEliminate).forEach(votedId => {
+                voteCounts[votedId] = (voteCounts[votedId] || 0) + 1;
+            });
+
+            let maxVotes = 0;
+            let playerToEliminateId = null;
+            for (const playerId in voteCounts) {
+                if (voteCounts[playerId] > maxVotes) {
+                    maxVotes = voteCounts[playerId];
+                    playerToEliminateId = playerId;
+                }
+            }
+
+            if (playerToEliminateId) {
+                const eliminatedPlayer = room.players.find(p => p.id === playerToEliminateId);
+                room.eliminatedPlayers.push(eliminatedPlayer.id);
+                io.to(roomCode).emit('voteResult', { outcome: 'eliminated', playerName: eliminatedPlayer.name, eliminatedPlayerId: eliminatedPlayer.id });
+                
+                const remainingImpostors = room.players.filter(p => p.role === 'impostor' && !room.eliminatedPlayers.includes(p.id));
+                const remainingCrewmates = room.players.filter(p => p.role === 'crewmate' && !room.eliminatedPlayers.includes(p.id));
+                if (remainingImpostors.length >= remainingCrewmates.length || remainingImpostors.length === 0) {
+                    checkWinConditions(room, roomCode, io);
+                } else {
+                     setTimeout(() => {
+                        room.roundActions = { votesToEndRound: new Set(), votesToEliminate: {} };
+                        const remainingPlayers = activePlayers.filter(p => !room.eliminatedPlayers.includes(p.id));
+                        const nextPlayer = getNextStartingPlayer(room);
+                        io.to(roomCode).emit('newRound', { startingPlayerName: nextPlayer.name, newPlayerCount: remainingPlayers.length });
+                    }, 3000);
+                }
+            }
+        } else if (votesToEndRoundCount > votesToEliminateCount) {
+            checkWinConditions(room, roomCode, io);
+        } else {
+            io.to(roomCode).emit('voteResult', { outcome: 'tie' });
+            setTimeout(() => {
+                room.roundActions = { votesToEndRound: new Set(), votesToEliminate: {} };
+                const nextPlayer = getNextStartingPlayer(room);
+                io.to(roomCode).emit('newRound', { startingPlayerName: nextPlayer.name, newPlayerCount: activePlayers.length });
+            }, 3000);
+        }
+    }
+}
+
+module.exports = {
+    gameRooms,
+    getMaxImpostors,
+    getRevealStatus,
+    initiateGame,
+    getNextStartingPlayer,
+    checkWinConditions,
+    checkActionsAndProceed
+};
