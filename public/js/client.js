@@ -73,7 +73,7 @@ if (difficultySelector) {
             event.target.classList.add('selected');
             const newDifficulty = event.target.dataset.difficulty;
             difficultySelect.value = newDifficulty;
-            if(settingsPanel) {
+            if (settingsPanel) {
                 settingsPanel.classList.remove('difficulty-easy', 'difficulty-medium', 'difficulty-hard');
                 settingsPanel.classList.add(`difficulty-${newDifficulty}`);
             }
