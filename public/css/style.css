@@ -124,4 +124,24 @@ input:checked + .slider:before { transform: translateX(26px); }
 .modal-content { width: 100%; max-width: 400px; border: 1px solid var(--color-panel-border); }
 .category-tile { border: 2px solid #333; }
 .player-vote-label { border-radius: var(--border-radius); border: 1px solid var(--color-panel-border); }
+.start-logo {
+    width: 100%;
+    max-width: 250px; /* Możesz dostosować ten rozmiar */
+    height: auto;
+    margin-bottom: 40px; /* Odstęp pod logo */
+}
+
+.input-label {
+    display: block;
+    font-family: var(--font-secondary);
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    font-size: 1rem;
+    margin-bottom: 10px;
+}
+
+/* Ta reguła jest tutaj, aby usunąć domyślny margines z pola input */
+#startScreen input {
+    margin-top: 0;
+}
 @media (min-width: 768px) { html { font-size: 18px; } .screen { max-width: 600px; } }
