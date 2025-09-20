@@ -14,19 +14,19 @@
 <body>
 
     <div id="startScreen" class="screen active">
-    <div class="start-screen-top">
-        <img src="/assets/logo.png" alt="Logo Gry Impostor" class="start-logo">
-    </div>
+        <div class="start-screen-top">
+            <img src="/assets/logo.png" alt="Logo Gry Impostor" class="start-logo">
+        </div>
 
-    <div class="start-screen-bottom">
-        <label for="playerNameInput" class="input-label">Wprowadź swoją nazwę</label>
-        <input type="text" id="playerNameInput">
-        <div class="start-buttons-container">
-            <button id="createGameBtn">Utwórz nową grę</button>
-            <button id="showJoinScreenBtn">Dołącz do gry</button>
+        <div class="start-screen-bottom">
+            <label for="playerNameInput" class="input-label">Wprowadź swoją nazwę</label>
+            <input type="text" id="playerNameInput">
+            <div class="start-buttons-container">
+                <button id="createGameBtn">Utwórz nową grę</button>
+                <button id="showJoinScreenBtn">Dołącz do gry</button>
+            </div>
         </div>
     </div>
-</div>
 
 
     <div id="joinScreen" class="screen">
@@ -37,13 +37,9 @@
     </div>
 
     <div id="gameLobby" class="screen">
-        <button class="exit-button">Wyjdź</button>
         <h1>Lobby Gry</h1>
         <h2>Kod do gry: <span id="gameCodeDisplay"></span></h2>
-        <h3>Gracze:</h3>
-        <div class="player-list-container">
-            <ul id="playerList"></ul>
-        </div>
+
         <div id="hostSettings" style="display: none;">
             <div class="settings-panel">
                 <div class="category-setting-container">
@@ -57,6 +53,7 @@
                     <option>Klasyczne Słowa</option>
                     <option>League of Legends</option>
                 </select>
+
                 <div class="setting-row-centered">
                     <label>Poziom trudności:</label>
                     <div class="difficulty-selector">
@@ -70,12 +67,14 @@
                         <option value="hard">Trudny</option>
                     </select>
                 </div>
+
                 <div class="setting-row">
                     <label>Liczba impostorów:</label>
                     <div class="number-input">
                         <button id="impostorsMinusBtn">-</button><span id="impostorsCount">1</span><button id="impostorsPlusBtn">+</button>
                     </div>
                 </div>
+
                 <div class="switch-group-container">
                     <div class="setting-row">
                         <label for="randomImpostorsCheckbox">Losowa ilość impostorów:</label>
@@ -84,7 +83,7 @@
                             <span class="slider"></span>
                         </label>
                     </div>
-                    <div class="setting-row">
+                    <div class="setting-row setting-hidden">
                         <label for="impostorHintCheckbox">Podpowiedź dla impostora:</label>
                         <label class="switch">
                             <input type="checkbox" id="impostorHintCheckbox">
@@ -92,6 +91,7 @@
                         </label>
                     </div>
                 </div>
+
                 <div class="setting-row">
                     <label>Liczba rund:</label>
                     <div class="number-input">
@@ -99,9 +99,17 @@
                     </div>
                 </div>
             </div>
+
+            <h3>Gracze:</h3>
+            <div class="player-list-container">
+                <ul id="playerList"></ul>
+            </div>
+
             <button id="startGameBtn">Start!</button>
         </div>
+
         <h3 id="waitingMessage" style="display: none;">Oczekiwanie na rozpoczęcie gry przez hosta...</h3>
+        <button class="exit-button">Wyjdź</button>
     </div>
 
     <div id="gameScreen" class="screen">
