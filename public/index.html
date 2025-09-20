@@ -7,19 +7,27 @@
     <title>Gra Impostor</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Bungee&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css?v=1.3">
 </head>
 
 <body>
 
     <div id="startScreen" class="screen active">
-        <h1>Witaj w Grze!</h1>
-        <input type="text" id="playerNameInput" placeholder="Wpisz swoją nazwę">
-        <hr>
-        <button id="createGameBtn">Utwórz nową grę</button>
-        <hr>
-        <button id="showJoinScreenBtn">Dołącz do gry</button>
+    <div class="start-screen-top">
+        <img src="/assets/logo.png" alt="Logo Gry Impostor" class="start-logo">
     </div>
+
+    <div class="start-screen-bottom">
+        <label for="playerNameInput" class="input-label">Wprowadź swoją nazwę</label>
+        <input type="text" id="playerNameInput">
+        <div class="start-buttons-container">
+            <button id="createGameBtn">Utwórz nową grę</button>
+            <button id="showJoinScreenBtn">Dołącz do gry</button>
+        </div>
+    </div>
+</div>
+
 
     <div id="joinScreen" class="screen">
         <h1>Dołącz do Gry</h1>

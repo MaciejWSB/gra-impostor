@@ -66,7 +66,6 @@ const currentCategoryIcon = document.getElementById('currentCategoryIcon');
 const difficultySelector = document.querySelector('.difficulty-selector');
 const settingsPanel = document.querySelector('.settings-panel');
 
-// Ten warunek if() jest kluczowy do naprawienia błędu
 if (difficultySelector) {
     difficultySelector.addEventListener('click', (event) => {
         if (event.target.classList.contains('difficulty-btn')) {
