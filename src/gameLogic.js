@@ -20,8 +20,7 @@ function getMaxImpostors(playerCount) {
 
 function getRevealStatus(room) {
     const revealedCount = room.revealedPlayers.size;
-    const totalPlayers = room.players.length;
-    // Usunięto listę graczy z odpowiedzi
+    const totalPlayers = room.players.filter(p => p.connected).length;
     return { revealedCount, totalPlayers };
 }
 
@@ -35,10 +34,12 @@ function initiateGame(roomCode, io) {
     room.votesAvailable = room.settings.randomImpostors ? room.players.length + 1 : room.settings.impostors;
     room.currentRound = (room.currentRound || 0) + 1;
     room.roundActions = { votesToEndRound: new Set(), votesToEliminate: {} };
-    room.playerOrder = room.players.map(p => p.id).sort(() => Math.random() - 0.5);
-    room.currentPlayerIndex = 0;
+    
+    const connectedPlayers = room.players.filter(p => p.connected);
+    room.playerOrder = connectedPlayers.map(p => p.id).sort(() => Math.random() - 0.5);
+    room.currentPlayerIndex = -1; // Zacznie od 0 po pierwszym wywołaniu getNext...
 
-    const players = room.players;
+    const players = connectedPlayers;
     const settings = room.settings;
 
     const wordSet = wordDatabase[settings.category]?.[settings.difficulty] || wordDatabase['Klasyczne Słowa']['easy'];
@@ -88,17 +89,16 @@ function initiateGame(roomCode, io) {
 
 function getNextStartingPlayer(room) {
     if (!room.playerOrder || room.playerOrder.length === 0) {
-        const activePlayers = room.players.filter(p => !room.eliminatedPlayers.includes(p.id));
+        const activePlayers = room.players.filter(p => p.connected && !room.eliminatedPlayers.includes(p.id));
         return activePlayers[Math.floor(Math.random() * activePlayers.length)];
     }
 
-    // Znajdź następnego gracza, który nie jest wyeliminowany
     let nextIndex = room.currentPlayerIndex;
     let loops = 0;
     do {
         nextIndex = (nextIndex + 1) % room.playerOrder.length;
         loops++;
-    } while (room.eliminatedPlayers.includes(room.playerOrder[nextIndex]) && loops < room.players.length * 2);
+    } while (room.eliminatedPlayers.includes(room.playerOrder[nextIndex]) && loops < room.playerOrder.length * 2);
     
     room.currentPlayerIndex = nextIndex;
     const nextPlayerId = room.playerOrder[room.currentPlayerIndex];
@@ -106,71 +106,37 @@ function getNextStartingPlayer(room) {
 }
 
 function checkWinConditions(room, roomCode, io) {
-    const activePlayers = room.players.filter(p => !room.eliminatedPlayers.includes(p.id));
+    const activePlayers = room.players.filter(p => p.connected && !room.eliminatedPlayers.includes(p.id));
     const activeImpostors = activePlayers.filter(p => p.role === 'impostor' && !room.eliminatedPlayers.includes(p.id));
     let gameOverData = null;
 
     if (activeImpostors.length === 0) {
-        // Detektywi wygrywają
         gameOverData = { winner: 'crewmates' };
     } else if (activeImpostors.length >= activePlayers.length / 2) {
-        // Impostorzy wygrywają
         gameOverData = { winner: 'impostors' };
-        // POPRAWKA: Przyznawanie punktów impostorom za wygraną
         room.players.forEach(p => {
-            if (p.role === 'impostor') {
-                p.score += 5; // Przykładowa liczba punktów
-            }
+            if (p.role === 'impostor') p.score += 5;
         });
     } else if (room.votesAvailable <= 0 && !room.settings.randomImpostors) {
-        // Impostorzy wygrywają przez brak głosów
         gameOverData = { winner: 'impostors' };
         room.players.forEach(p => {
-            if (p.role === 'impostor') {
-                p.score += 5;
-            }
+            if (p.role === 'impostor') p.score += 5;
         });
     }
 
     if (gameOverData) {
+        room.gameState = 'ended';
         gameOverData.scores = room.players.map(p => ({ name: p.name, score: p.score, role: p.role }));
         gameOverData.currentRound = room.currentRound;
         gameOverData.totalRounds = room.settings.rounds;
         gameOverData.impostors = room.players.filter(p => room.impostorIds.has(p.id)).map(p => p.name);
         gameOverData.password = room.chosenWord;
         if (room.currentRound >= room.settings.rounds) gameOverData.isFinal = true;
+        
         setTimeout(() => io.to(roomCode).emit('gameOver', gameOverData), 3000);
-    } else {
-        setTimeout(() => {
-            const nextPlayer = getNextStartingPlayer(room);
-            io.to(roomCode).emit('newRound', { startingPlayerName: nextPlayer.name, newPlayerCount: activePlayers.length });
-        }, 3000);
+        return true; // Zasygnalizuj, że gra się skończyła
     }
-}
-
-function checkActionsAndProceed(room, roomCode, io) {
-    const activePlayers = room.players.filter(p => !room.eliminatedPlayers.includes(p.id));
-    const totalPlayers = activePlayers.length;
-
-    const votesToEliminateCount = Object.keys(room.roundActions.votesToEliminate).length;
-    const votesToEndRoundCount = room.roundActions.votesToEndRound.size;
-    const totalActionsTaken = votesToEliminateCount + votesToEndRoundCount;
-
-    io.to(roomCode).emit('updateActionCounts', {
-        toEliminate: votesToEliminateCount,
-        toEndRound: votesToEndRoundCount,
-        totalPlayers: totalPlayers
-    });
-
-    if (totalActionsTaken === totalPlayers && totalPlayers > 0) {
-        if (votesToEliminateCount > votesToEndRoundCount) {
-            // Logika eliminacji gracza
-        } else if (votesToEndRoundCount > votesToEliminateCount) {
-            checkWinConditions(room, roomCode, io);
-        } else {
-            // Remis
-        }
-    }
+    return false; // Gra toczy się dalej
 }
 
 function removePlayer(io, roomCode, playerId) {
@@ -180,9 +146,8 @@ function removePlayer(io, roomCode, playerId) {
     const playerIndex = room.players.findIndex(p => p.id === playerId);
     if (playerIndex === -1) return;
 
-    const disconnectedPlayerName = room.players[playerIndex].name;
+    const disconnectedPlayer = room.players[playerIndex];
     room.players.splice(playerIndex, 1);
-    io.to(roomCode).emit('playerDisconnected', disconnectedPlayerName);
 
     if (room.players.length === 0) {
         delete gameRooms[roomCode];
@@ -196,7 +161,8 @@ function removePlayer(io, roomCode, playerId) {
     }
 
     if (room.gameState !== 'lobby') {
-        io.to(roomCode).emit('gameInterrupted', `Gracz ${disconnectedPlayerName} opuścił grę.`);
+        io.to(roomCode).emit('gameInterrupted', `Gracz ${disconnectedPlayer.name} opuścił grę.`);
+        room.gameState = 'lobby'; // Zresetuj stan gry
     }
     
     io.to(roomCode).emit('updateLobby', { players: room.players, settings: room.settings, hostId: room.hostId });
@@ -241,7 +207,6 @@ module.exports = {
     initiateGame,
     getNextStartingPlayer,
     checkWinConditions,
-    checkActionsAndProceed,
     handlePlayerDisconnect,
     handlePlayerReconnect
 };
