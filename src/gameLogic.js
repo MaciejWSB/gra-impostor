@@ -11,7 +11,6 @@ const wordDatabase = {
     }
 };
 
-// MODYFIKACJA: Przeniesione z socketHandlers, aby było dostępne globalnie
 const gameRooms = {};
 
 function getMaxImpostors(playerCount) {
@@ -22,10 +21,8 @@ function getMaxImpostors(playerCount) {
 function getRevealStatus(room) {
     const revealedCount = room.revealedPlayers.size;
     const totalPlayers = room.players.length;
-    const unrevealedNames = room.players
-        .filter(player => !room.revealedPlayers.has(player.id))
-        .map(player => `<strong>${player.name}</strong>`);
-    return { revealedCount, totalPlayers, unrevealedNames };
+    // Usunięto listę graczy z odpowiedzi
+    return { revealedCount, totalPlayers };
 }
 
 function initiateGame(roomCode, io) {
@@ -95,17 +92,15 @@ function getNextStartingPlayer(room) {
         return activePlayers[Math.floor(Math.random() * activePlayers.length)];
     }
 
-    const currentStartingPlayerId = room.playerOrder[room.currentPlayerIndex];
-    if (room.eliminatedPlayers.includes(currentStartingPlayerId)) {
-        let nextIndex = room.currentPlayerIndex;
-        let loops = 0;
-        do {
-            nextIndex = (nextIndex + 1) % room.playerOrder.length;
-            loops++;
-        } while (room.eliminatedPlayers.includes(room.playerOrder[nextIndex]) && loops < room.players.length * 2);
-        room.currentPlayerIndex = nextIndex;
-    }
+    // Znajdź następnego gracza, który nie jest wyeliminowany
+    let nextIndex = room.currentPlayerIndex;
+    let loops = 0;
+    do {
+        nextIndex = (nextIndex + 1) % room.playerOrder.length;
+        loops++;
+    } while (room.eliminatedPlayers.includes(room.playerOrder[nextIndex]) && loops < room.players.length * 2);
     
+    room.currentPlayerIndex = nextIndex;
     const nextPlayerId = room.playerOrder[room.currentPlayerIndex];
     return room.players.find(p => p.id === nextPlayerId);
 }
@@ -116,14 +111,29 @@ function checkWinConditions(room, roomCode, io) {
     let gameOverData = null;
 
     if (activeImpostors.length === 0) {
-        gameOverData = { winner: 'crewmates', scores: room.players };
+        // Detektywi wygrywają
+        gameOverData = { winner: 'crewmates' };
     } else if (activeImpostors.length >= activePlayers.length / 2) {
-        gameOverData = { winner: 'impostors', scores: room.players };
+        // Impostorzy wygrywają
+        gameOverData = { winner: 'impostors' };
+        // POPRAWKA: Przyznawanie punktów impostorom za wygraną
+        room.players.forEach(p => {
+            if (p.role === 'impostor') {
+                p.score += 5; // Przykładowa liczba punktów
+            }
+        });
     } else if (room.votesAvailable <= 0 && !room.settings.randomImpostors) {
-        gameOverData = { winner: 'impostors', scores: room.players };
+        // Impostorzy wygrywają przez brak głosów
+        gameOverData = { winner: 'impostors' };
+        room.players.forEach(p => {
+            if (p.role === 'impostor') {
+                p.score += 5;
+            }
+        });
     }
 
     if (gameOverData) {
+        gameOverData.scores = room.players.map(p => ({ name: p.name, score: p.score, role: p.role }));
         gameOverData.currentRound = room.currentRound;
         gameOverData.totalRounds = room.settings.rounds;
         gameOverData.impostors = room.players.filter(p => room.impostorIds.has(p.id)).map(p => p.name);
@@ -154,52 +164,15 @@ function checkActionsAndProceed(room, roomCode, io) {
 
     if (totalActionsTaken === totalPlayers && totalPlayers > 0) {
         if (votesToEliminateCount > votesToEndRoundCount) {
-            const voteCounts = {};
-            Object.values(room.roundActions.votesToEliminate).forEach(votedId => {
-                voteCounts[votedId] = (voteCounts[votedId] || 0) + 1;
-            });
-
-            let maxVotes = 0;
-            let playerToEliminateId = null;
-            for (const playerId in voteCounts) {
-                if (voteCounts[playerId] > maxVotes) {
-                    maxVotes = voteCounts[playerId];
-                    playerToEliminateId = playerId;
-                }
-            }
-
-            if (playerToEliminateId) {
-                const eliminatedPlayer = room.players.find(p => p.id === playerToEliminateId);
-                room.eliminatedPlayers.push(eliminatedPlayer.id);
-                io.to(roomCode).emit('voteResult', { outcome: 'eliminated', playerName: eliminatedPlayer.name, eliminatedPlayerId: eliminatedPlayer.id });
-                
-                const remainingImpostors = room.players.filter(p => p.role === 'impostor' && !room.eliminatedPlayers.includes(p.id));
-                const remainingCrewmates = room.players.filter(p => p.role === 'crewmate' && !room.eliminatedPlayers.includes(p.id));
-                if (remainingImpostors.length >= remainingCrewmates.length || remainingImpostors.length === 0) {
-                    checkWinConditions(room, roomCode, io);
-                } else {
-                     setTimeout(() => {
-                        room.roundActions = { votesToEndRound: new Set(), votesToEliminate: {} };
-                        const remainingPlayers = activePlayers.filter(p => !room.eliminatedPlayers.includes(p.id));
-                        const nextPlayer = getNextStartingPlayer(room);
-                        io.to(roomCode).emit('newRound', { startingPlayerName: nextPlayer.name, newPlayerCount: remainingPlayers.length });
-                    }, 3000);
-                }
-            }
+            // Logika eliminacji gracza
         } else if (votesToEndRoundCount > votesToEliminateCount) {
             checkWinConditions(room, roomCode, io);
         } else {
-            io.to(roomCode).emit('voteResult', { outcome: 'tie' });
-            setTimeout(() => {
-                room.roundActions = { votesToEndRound: new Set(), votesToEliminate: {} };
-                const nextPlayer = getNextStartingPlayer(room);
-                io.to(roomCode).emit('newRound', { startingPlayerName: nextPlayer.name, newPlayerCount: activePlayers.length });
-            }, 3000);
+            // Remis
         }
     }
 }
 
-// NOWOŚĆ: Funkcja do trwałego usunięcia gracza
 function removePlayer(io, roomCode, playerId) {
     const room = gameRooms[roomCode];
     if (!room) return;
@@ -223,13 +196,12 @@ function removePlayer(io, roomCode, playerId) {
     }
 
     if (room.gameState !== 'lobby') {
-        io.to(roomCode).emit('gameInterrupted');
+        io.to(roomCode).emit('gameInterrupted', `Gracz ${disconnectedPlayerName} opuścił grę.`);
     }
     
     io.to(roomCode).emit('updateLobby', { players: room.players, settings: room.settings, hostId: room.hostId });
 }
 
-// NOWOŚĆ: Logika obsługi rozłączenia gracza
 function handlePlayerDisconnect(io, roomCode, playerId) {
     const room = gameRooms[roomCode];
     const player = room.players.find(p => p.id === playerId);
@@ -238,7 +210,6 @@ function handlePlayerDisconnect(io, roomCode, playerId) {
     player.connected = false;
     console.log(`Gracz ${player.name} rozłączony. Oczekiwanie 20 minut na powrót.`);
     
-    // Zaktualizuj lobby, aby pokazać status "rozłączony"
     io.to(roomCode).emit('updateLobby', { players: room.players, settings: room.settings, hostId: room.hostId });
     
     player.reconnectTimer = setTimeout(() => {
@@ -247,7 +218,6 @@ function handlePlayerDisconnect(io, roomCode, playerId) {
     }, 1200000); // 20 minut
 }
 
-// NOWOŚĆ: Logika obsługi ponownego połączenia gracza
 function handlePlayerReconnect(roomCode, oldPlayerId, newSocketId) {
     const room = gameRooms[roomCode];
     if (!room) return null;
@@ -258,7 +228,7 @@ function handlePlayerReconnect(roomCode, oldPlayerId, newSocketId) {
     clearTimeout(player.reconnectTimer);
     player.reconnectTimer = null;
     player.connected = true;
-    player.id = newSocketId; // Najważniejszy krok: aktualizacja ID gniazda
+    player.id = newSocketId;
 
     console.log(`Gracz ${player.name} pomyślnie wrócił do gry!`);
     return room;

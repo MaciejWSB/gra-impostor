@@ -34,23 +34,16 @@ body {
 }
 
 .screen { display: none; width: 90vw; max-width: 450px; }
-.active { display: block; }
+.screen.active { display: flex; flex-direction: column; align-items: center; }
 hr { border: 1px solid var(--color-border); margin: 25px 0; }
 h1, h2, h3 { font-family: var(--font-header); letter-spacing: 2px; }
 
 /* === EKRAN STARTOWY === */
-#startScreen.active {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-around;
-    height: 100vh;
-    padding: 10vh 0;
-}
+#startScreen.active { justify-content: space-around; height: 100vh; padding: 10vh 0; }
 .start-logo { width: 80%; max-width: 280px; height: auto; }
 .input-label { display: block; text-transform: uppercase; color: var(--color-text-muted); font-size: 1rem; margin-bottom: 15px; }
 #startScreen input { margin-top: 0; margin-bottom: 25px; }
 .start-buttons-container { display: flex; flex-direction: column; align-items: center; gap: 15px; width: 100%; }
-/* ZMIANA: Zwężone przyciski na ekranie startowym */
 #startScreen button { width: 100%; max-width: 300px; }
 
 /* === GŁÓWNE KOMPONENTY === */
@@ -70,144 +63,93 @@ button {
     background-size: 200% auto;
     box-shadow: var(--shadow);
     transition: all 0.3s;
+    width: 100%; max-width: 350px;
 }
-button:hover:not([disabled]) {
-    background-position: right center;
-    transform: scale(1.05);
-}
+button:hover:not([disabled]) { background-position: right center; transform: scale(1.05); }
 button:disabled {
-    background-image: none;
-    background-color: #444;
-    color: #777;
-    cursor: not-allowed;
-    box-shadow: none;
+    background-image: none; background-color: #444; color: #777;
+    cursor: not-allowed; box-shadow: none;
 }
-li { background-color: var(--color-panel); border: 1px solid var(--color-border); margin: 8px 0; padding: 12px; border-radius: var(--border-radius); }
+li {
+    background-color: var(--color-panel); border: 1px solid var(--color-border);
+    margin: 8px 0; padding: 12px; border-radius: var(--border-radius);
+    display: flex; justify-content: space-between; align-items: center;
+}
+
+/* === PRZYCISK WYRZUCANIA GRACZA === */
+.kick-btn {
+    font-size: 0.8rem; padding: 5px 10px; min-width: 60px;
+    max-width: 60px; background-image: none; background-color: var(--color-red);
+    box-shadow: none; margin: 0;
+}
+.kick-btn:hover { background-color: #ff4d4d; }
 
 /* === EKRAN LOBBY I USTAWIENIA === */
-/* ZMIANA: Przycisk wyjścia na dole */
-#gameLobby .exit-button { margin-top: 25px; }
-/* ZMIANA: Lista graczy przeniesiona pod ustawienia */
+#gameLobby .exit-button, #endGameScreen .exit-button, #votingScreen .exit-button { margin-top: auto; padding-top: 20px; }
 #hostSettings h3 { margin-top: 20px; }
-#hostSettings .player-list-container { margin-bottom: 20px; }
+#hostSettings .player-list-container { margin-bottom: 20px; width: 100%;}
 
-/* ZMIANA: Gradient i lepszy wygląd dla kodu gry */
 #gameCodeDisplay {
     background-image: linear-gradient(45deg, var(--color-red) 0%, var(--color-orange) 100%);
-    color: white;
-    padding: 8px 15px;
-    border-radius: 8px;
-    font-weight: 700;
-    font-size: 1.2rem;
-    letter-spacing: 2px;
-    border: none;
-    display: inline-block;
-    box-shadow: var(--shadow);
+    color: white; padding: 8px 15px; border-radius: 8px; font-weight: 700;
+    font-size: 1.2rem; letter-spacing: 2px; border: none; display: inline-block; box-shadow: var(--shadow);
 }
-.settings-panel { background-color: var(--color-panel); border: 1px solid var(--color-border); border-radius: var(--border-radius); box-shadow: var(--shadow); padding: 10px 20px 20px 20px; margin-top: 20px; }
-/* ZMIANA: Lepsza czcionka dla etykiet w ustawieniach */
+.settings-panel {
+    background-color: var(--color-panel); border: 1px solid var(--color-border);
+    border-radius: var(--border-radius); box-shadow: var(--shadow);
+    padding: 10px 20px 20px 20px; margin-top: 20px; width: 100%;
+}
 .settings-panel label { font-family: var(--font-primary); text-transform: uppercase; color: var(--color-text-muted); font-size: 0.9rem; }
 .setting-row { display: flex; justify-content: space-between; align-items: center; margin: 30px 0; }
 .setting-row-centered { display: flex; flex-direction: column; align-items: center; margin: 30px 0; gap: 15px; }
+.setting-column { flex-direction: column; gap: 10px; } /* Dla liczników */
 
-/* ZMIANA: Mniejszy kafelek kategorii w lobby z ramką */
+/* ZMIANA: Wybór kategorii jako kwadrat */
+.category-setting-container { display: flex; flex-direction: column; align-items: center; gap: 10px; }
 #lobbyCategoryTile {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 12px;
-    border: 2px solid var(--color-orange);
-    border-radius: var(--border-radius);
-    cursor: pointer;
-    transition: transform 0.2s;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; padding: 8px; border: 2px solid var(--color-orange);
+    border-radius: var(--border-radius); cursor: pointer; transition: transform 0.2s;
+    width: 120px; height: 120px;
 }
 #lobbyCategoryTile:hover { transform: scale(1.05); }
-#lobbyCategoryTile #currentCategoryIcon { width: 30px; height: 30px; }
-#lobbyCategoryTile #currentCategoryName { font-size: 0.9rem; }
+#lobbyCategoryTile #currentCategoryIcon { width: 50px; height: 50px; }
+#lobbyCategoryTile #currentCategoryName { font-size: 1rem; font-family: var(--font-primary); }
 
-/* ZMIANA: Przyciski trudności w jednej linii i lepsze podświetlenie */
-.difficulty-selector { display: flex; justify-content: center; width: 100%; gap: 5px; } /* Zmniejszony odstęp */
+.difficulty-selector { display: flex; justify-content: center; width: 100%; gap: 5px; }
 .difficulty-btn {
-    flex-grow: 1;
-    margin: 0;
-    background-image: none;
-    background-color: var(--color-panel);
-    border: 2px solid var(--color-border);
-    opacity: 0.5;
-    transform: scale(1);
-    filter: grayscale(80%);
-    /* Zmniejszona czcionka i padding */
-    font-size: 0.9rem;
-    padding: 12px 5px;
-    letter-spacing: 1px;
-}
-
-.toast {
-    position: fixed; /* Kluczowe, aby nie rozpychać strony */
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%); /* Idealne centrowanie */
-    background-color: var(--color-red);
-    color: white;
-    padding: 12px 22px;
-    border-radius: var(--border-radius);
-    box-shadow: var(--shadow);
-    z-index: 2000;
-    opacity: 0;
-    visibility: hidden; /* Ukryty, gdy nieaktywny */
-    transition: opacity 0.4s, visibility 0.4s;
-    text-align: center;
-}
-
-.toast.show {
-    opacity: 1;
-    visibility: visible; /* Widoczny, gdy aktywny */
+    flex-grow: 1; margin: 0; background-image: none; background-color: var(--color-panel);
+    border: 2px solid var(--color-border); opacity: 0.5; transform: scale(1); filter: grayscale(80%);
+    font-size: 0.9rem; padding: 12px 5px; letter-spacing: 1px;
 }
 .difficulty-btn.selected, .difficulty-btn:hover {
-    opacity: 1;
-    background-image: linear-gradient(45deg, var(--color-red) 0%, var(--color-orange) 100%);
-    border-color: var(--color-orange);
-    transform: scale(1.05);
-    filter: grayscale(0%);
+    opacity: 1; background-image: linear-gradient(45deg, var(--color-red) 0%, var(--color-orange) 100%);
+    border-color: var(--color-orange); transform: scale(1.05); filter: grayscale(0%);
 }
 
-/* ZMIANA: Lepszy wygląd liczników impostorów i rund */
 .number-input { display: flex; align-items: center; }
 .number-input button {
-    min-width: 35px;
-    width: 35px;
-    height: 35px;
-    padding: 0;
-    font-size: 1.2rem;
-    line-height: 35px;
-    border-radius: 10px;
+    min-width: 35px; width: 35px; height: 35px; padding: 0;
+    font-size: 1.2rem; line-height: 35px; border-radius: 10px;
 }
 .number-input span {
-    font-family: var(--font-header); /* Czcionka Bungee */
-    font-size: 2rem; /* Większa liczba */
-    font-weight: bold;
-    color: var(--color-text);
-    margin: 0 15px;
-    min-width: 30px;
+    font-family: var(--font-header); font-size: 2rem;
+    font-weight: bold; color: var(--color-text);
+    margin: 0 15px; min-width: 30px;
 }
 
-/* ZMIANA: Ukrycie opcji "Podpowiedź dla impostora" */
 .setting-hidden { display: none !important; }
 
-/* ZMIANA: Stylizowany przełącznik (suwak) zamiast checkboxa */
 .switch { position: relative; display: inline-block; width: 60px; height: 34px; }
 .switch input { opacity: 0; width: 0; height: 0; }
 .slider {
     position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-    background-color: #333;
-    transition: .4s;
-    border-radius: 34px;
+    background-color: #333; transition: .4s; border-radius: 34px;
 }
 .slider:before {
     position: absolute; content: ""; height: 26px; width: 26px;
     left: 4px; bottom: 4px; background-color: white;
-    transition: .4s;
-    border-radius: 50%;
+    transition: .4s; border-radius: 50%;
 }
 input:checked + .slider {
     background-image: linear-gradient(45deg, var(--color-red) 0%, var(--color-orange) 100%);
@@ -216,28 +158,82 @@ input:checked + .slider {
 input:checked + .slider:before { transform: translateX(26px); }
 
 /* === EKRAN WYBORU KATEGORII === */
-/* ZMIANA: Siatka kafelków 2x2 */
-.category-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 15px;
-    margin-top: 20px;
-}
+.category-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 20px; }
 
-/* Pozostałe style bez zmian */
-.modal-backdrop {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background-color: rgba(0, 0, 0, 0.8); display: none;
-    justify-content: center; align-items: center; z-index: 1000; padding: 20px;
-}
-#gameScreen.active { display: flex; flex-direction: column; justify-content: center; align-items: center; position: fixed; width: 100%; height: 100%; }
-.card { width: 90%; max-width: 400px; height: 250px; perspective: 1000px; }
+/* === EKRAN GRY === */
+#gameScreen.active { display: flex; flex-direction: column; justify-content: flex-start; padding-top: 10vh; width: 100%; height: 100%;}
+.card { width: 90%; max-width: 400px; height: 250px; perspective: 1000px; margin-bottom: 20px; }
 .card-inner { position: relative; width: 100%; height: 100%; transition: transform 0.6s; transform-style: preserve-3d; }
 .card.is-flipped .card-inner { transform: rotateY(180deg); }
-.card-front, .card-back { position: absolute; width: 100%; height: 100%; -webkit-backface-visibility: hidden; backface-visibility: hidden; border-radius: var(--border-radius); display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; box-shadow: var(--shadow); }
+.card-front, .card-back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: var(--border-radius); display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; box-shadow: var(--shadow); }
 .card-front { background-color: var(--color-panel); border: 1px solid #444; transform: rotateY(180deg); }
 .card-back { background-color: var(--color-panel); border: 1px solid var(--color-orange); cursor: pointer; }
 .role-impostor { color: var(--color-red); }
-.role-crewmate { color: var(--color-green); }
-#revealStatus, #turnCountdown { width: 100%; font-size: 1.2rem; position: absolute; bottom: 5vh; left: 50%; transform: translateX(-50%); }
-.turn-info-container p { font-family: var(--font-header); font-size: 2.5rem; color: var(--color-yellow); }
+.role-crewmate { color: var(--color-text); }
+
+#revealStatus { font-size: 1.4rem; font-weight: bold; margin-top: 20px; }
+
+/* ZMIANA: Odliczanie na środku ekranu */
+#turnCountdown {
+    width: 100%;
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+}
+#turnCountdown h2 { font-size: 1.5rem; color: var(--color-text-muted); }
+#turnCountdown p { font-family: var(--font-header); font-size: 6rem; color: var(--color-orange); }
+
+#gameActionContainer { width: 100%; margin-top: auto; margin-bottom: 5vh; display: flex; flex-direction: column; gap: 15px;}
+#gameActionContainer h2 { font-size: 1.5rem; color: var(--color-text-muted); }
+#gameActionContainer p { font-family: var(--font-header); font-size: 2.5rem; color: var(--color-orange); }
+
+/* === EKRAN GŁOSOWANIA === */
+#votingScreen { width: 100%;}
+#votingOptions { display: flex; flex-direction: column; gap: 10px; width: 100%; margin: 20px 0; }
+.player-vote-label {
+    background-color: var(--color-panel); border: 2px solid var(--color-border);
+    padding: 15px; border-radius: var(--border-radius); transition: all 0.2s;
+    cursor: pointer; font-size: 1.2rem;
+}
+.player-vote-label input[type="radio"] { display: none; } /* Ukrywamy oryginalny radio button */
+.player-vote-label:has(input[type="radio"]:checked) {
+    border-color: var(--color-orange); background-color: #2a2a2a;
+    transform: scale(1.03); box-shadow: 0 0 10px var(--color-orange);
+}
+
+/* === EKRAN KOŃCOWY === */
+#endGameInfo {
+    background-color: var(--color-panel); padding: 20px;
+    border-radius: var(--border-radius); width: 100%; margin: 20px 0;
+}
+.endgame-info-label {
+    font-size: 1rem; color: var(--color-text-muted);
+    text-transform: uppercase; margin-bottom: 5px;
+}
+.endgame-password, .endgame-impostors {
+    font-size: 1.5rem; font-weight: bold; margin-bottom: 15px;
+}
+.endgame-password { color: var(--color-orange); }
+.endgame-impostors { color: var(--color-red); }
+
+/* === MODALE I POWIADOMIENIA === */
+.modal-backdrop {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(0, 0, 0, 0.9); /* Mocniejsze tło */
+    display: none; justify-content: center; align-items: center;
+    z-index: 1000; padding: 20px;
+}
+.modal-content {
+    background-color: var(--color-panel); padding: 25px;
+    border-radius: var(--border-radius); border: 1px solid var(--color-border);
+    width: 100%; max-width: 400px;
+}
+
+.toast {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+    background-color: var(--color-red); color: white; padding: 12px 22px;
+    border-radius: var(--border-radius); box-shadow: var(--shadow);
+    z-index: 2000; opacity: 0; visibility: hidden;
+    transition: opacity 0.4s, visibility 0.4s; text-align: center;
+}
+.toast.show { opacity: 1; visibility: visible; }

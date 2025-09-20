@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Bungee&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/style.css?v=1.3">
+    <link rel="stylesheet" href="/css/style.css?v=1.4">
 </head>
 
 <body>
@@ -17,7 +17,6 @@
         <div class="start-screen-top">
             <img src="/assets/logo.png" alt="Logo Gry Impostor" class="start-logo">
         </div>
-
         <div class="start-screen-bottom">
             <label for="playerNameInput" class="input-label">Wprowadź swoją nazwę</label>
             <input type="text" id="playerNameInput">
@@ -27,7 +26,6 @@
             </div>
         </div>
     </div>
-
 
     <div id="joinScreen" class="screen">
         <h1>Dołącz do Gry</h1>
@@ -39,7 +37,6 @@
     <div id="gameLobby" class="screen">
         <h1>Lobby Gry</h1>
         <h2>Kod do gry: <span id="gameCodeDisplay"></span></h2>
-
         <div id="hostSettings" style="display: none;">
             <div class="settings-panel">
                 <div class="category-setting-container">
@@ -53,7 +50,6 @@
                     <option>Klasyczne Słowa</option>
                     <option>League of Legends</option>
                 </select>
-
                 <div class="setting-row-centered">
                     <label>Poziom trudności:</label>
                     <div class="difficulty-selector">
@@ -67,47 +63,39 @@
                         <option value="hard">Trudny</option>
                     </select>
                 </div>
-
-                <div class="setting-row">
-                    <label>Liczba impostorów:</label>
+                <div class="setting-row setting-column">
+                    <label>Liczba<br>impostorów:</label>
                     <div class="number-input">
                         <button id="impostorsMinusBtn">-</button><span id="impostorsCount">1</span><button id="impostorsPlusBtn">+</button>
                     </div>
                 </div>
-
-                <div class="switch-group-container">
-                    <div class="setting-row">
-                        <label for="randomImpostorsCheckbox">Losowa ilość impostorów:</label>
-                        <label class="switch">
-                            <input type="checkbox" id="randomImpostorsCheckbox">
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                    <div class="setting-row setting-hidden">
-                        <label for="impostorHintCheckbox">Podpowiedź dla impostora:</label>
-                        <label class="switch">
-                            <input type="checkbox" id="impostorHintCheckbox">
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                </div>
-
-                <div class="setting-row">
-                    <label>Liczba rund:</label>
+                <div class="setting-row setting-column">
+                    <label>Liczba<br>rund:</label>
                     <div class="number-input">
                         <button id="roundsMinusBtn">-</button><span id="roundsCount">5</span><button id="roundsPlusBtn">+</button>
                     </div>
                 </div>
+                <div class="setting-row">
+                    <label for="randomImpostorsCheckbox">Losowa ilość impostorów:</label>
+                    <label class="switch">
+                        <input type="checkbox" id="randomImpostorsCheckbox">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row setting-hidden">
+                    <label for="impostorHintCheckbox">Podpowiedź dla impostora:</label>
+                    <label class="switch">
+                        <input type="checkbox" id="impostorHintCheckbox">
+                        <span class="slider"></span>
+                    </label>
+                </div>
             </div>
-
             <h3>Gracze:</h3>
             <div class="player-list-container">
                 <ul id="playerList"></ul>
             </div>
-
             <button id="startGameBtn">Start!</button>
         </div>
-
         <h3 id="waitingMessage" style="display: none;">Oczekiwanie na rozpoczęcie gry przez hosta...</h3>
         <button class="exit-button">Wyjdź</button>
     </div>
@@ -126,25 +114,27 @@
         </div>
         <div id="revealStatus"></div>
         <div id="turnCountdown"></div>
+        <div id="gameActionContainer"></div>
     </div>
 
     <div id="votingScreen" class="screen">
-        <button class="exit-button">Wyjdź</button>
         <h1>Głosowanie</h1>
         <p>Kto Twoim zdaniem jest Impostorem?</p>
         <div id="votingOptions"></div>
         <div id="voteStatus"></div>
         <button id="submitVoteBtn">Głosuj!</button>
+        <button class="exit-button">Wyjdź</button>
     </div>
 
     <div id="endGameScreen" class="screen">
-        <button class="exit-button">Wyjdź</button>
         <h1 id="endGameTitle"></h1>
-        <p id="endGameText"></p>
+        <div id="endGameInfo">
+             </div>
         <div id="roundInfo"></div>
         <h3>Tablica wyników:</h3>
         <ul id="scoreboard"></ul>
         <div id="endGameButtons"></div>
+        <button class="exit-button">Wyjdź</button>
     </div>
 
     <div id="eliminatedScreen" class="screen">
@@ -185,7 +175,7 @@
     <div id="toast" class="toast"></div>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script src="/js/client.js?v=1.2"></script>
+    <script src="/js/client.js?v=1.3"></script>
 </body>
 
 </html>

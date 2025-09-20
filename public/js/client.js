@@ -40,6 +40,7 @@ const roleDisplay = document.getElementById('roleDisplay');
 const passwordContainer = document.getElementById('passwordContainer');
 const revealStatus = document.getElementById('revealStatus');
 const turnCountdown = document.getElementById('turnCountdown');
+const gameActionContainer = document.getElementById('gameActionContainer');
 const votingOptions = document.getElementById('votingOptions');
 const voteStatus = document.getElementById('voteStatus');
 const submitVoteBtn = document.getElementById('submitVoteBtn');
@@ -53,7 +54,7 @@ const confirmYesBtn = document.getElementById('confirmYesBtn');
 const confirmNoBtn = document.getElementById('confirmNoBtn');
 const toast = document.getElementById('toast');
 const endGameTitle = document.getElementById('endGameTitle');
-const endGameText = document.getElementById('endGameText');
+const endGameInfo = document.getElementById('endGameInfo');
 const roundInfo = document.getElementById('roundInfo');
 const scoreboard = document.getElementById('scoreboard');
 const endGameButtons = document.getElementById('endGameButtons');
@@ -66,7 +67,6 @@ const currentCategoryIcon = document.getElementById('currentCategoryIcon');
 const difficultySelector = document.querySelector('.difficulty-selector');
 const settingsPanel = document.querySelector('.settings-panel');
 
-// Logika próby ponownego połączenia po załadowaniu strony
 window.addEventListener('load', () => {
     const sessionData = JSON.parse(sessionStorage.getItem('impostorSession'));
     if (sessionData && sessionData.roomCode && sessionData.oldSocketId) {
@@ -101,7 +101,7 @@ function updateSettings() {
     const newSettings = {
         category: categorySelect.value,
         difficulty: difficultySelect.value,
-        impostors: parseInt(impostorsCount.innerText) || 1,
+        impostors: randomImpostorsCheckbox.checked ? '?' : (parseInt(impostorsCount.innerText) || 1),
         rounds: parseInt(roundsCount.innerText),
         impostorHint: impostorHintCheckbox.checked,
         randomImpostors: randomImpostorsCheckbox.checked
@@ -109,35 +109,40 @@ function updateSettings() {
     socket.emit('updateSettings', { roomCode: currentRoomCode, settings: newSettings });
 }
 
-function showModal(title, text, showButton = true) { modalTitle.innerText = title; modalText.innerText = text; modalCloseBtn.style.display = showButton ? 'inline-block' : 'none'; modal.style.display = 'flex'; }
+function showModal(title, text, showButton = true) {
+    modalTitle.innerText = title;
+    modalText.innerText = text;
+    modalCloseBtn.style.display = showButton ? 'inline-block' : 'none';
+    modal.style.display = 'flex';
+}
 
-function showScreen(screenToShow) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); screenToShow.classList.add('active'); }
+function showScreen(screenToShow) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    screenToShow.classList.add('active');
+}
 
 function showTurnScreen(playerName) {
     votingScreen.classList.remove('active');
     showScreen(gameScreen);
     card.style.display = 'none';
     revealStatus.innerHTML = '';
+    turnCountdown.innerHTML = '';
 
     let buttonsHTML = '';
     if (isRandomMode) {
         const initialCounts = `(0/${playerCount})`;
-        buttonsHTML = `
-            <button id="goToVoteBtn">
-                <span class="button-text">Przejdź do Głosowania</span>
-                <div class="count-box" id="voteCountDisplay">${initialCounts}</div>
-            </button>
-            <button id="declareVictoryBtn">
-                <span class="button-text">Nie ma więcej impostorów</span>
-                <div class="count-box" id="endRoundCountDisplay">${initialCounts}</div>
-            </button>
-        `;
+        buttonsHTML = `<button id="goToVoteBtn"><span class="button-text">Przejdź do Głosowania</span><div class="count-box" id="voteCountDisplay">${initialCounts}</div></button><button id="declareVictoryBtn"><span class="button-text">Nie ma więcej impostorów</span><div class="count-box" id="endRoundCountDisplay">${initialCounts}</div></button>`;
     } else {
         buttonsHTML = '<button id="goToVoteBtn">Przejdź do Głosowania</button>';
     }
 
-    turnCountdown.innerHTML = `<div class="turn-info-container"><h2>Tura gracza:</h2><p>${playerName}</p>${buttonsHTML}</div>`;
-
+    gameActionContainer.innerHTML = `<h2>ZACZYNA GRACZ:</h2><p>${playerName}</p>${buttonsHTML}<button class="exit-button">Wyjdź z gry</button>`;
+    
+    gameActionContainer.querySelector('.exit-button').addEventListener('click', () => {
+        confirmText.innerText = 'Czy na pewno chcesz opuścić grę i wrócić do menu głównego?';
+        confirmModal.style.display = 'flex';
+    });
+    
     const goToVoteBtn = document.getElementById('goToVoteBtn');
     if (goToVoteBtn) {
         goToVoteBtn.disabled = amI_Eliminated;
@@ -157,17 +162,14 @@ modalCloseBtn.addEventListener('click', () => { modal.style.display = 'none'; })
 createGameBtn.addEventListener('click', () => { socket.emit('createGame', { playerName: playerNameInput.value }); });
 showJoinScreenBtn.addEventListener('click', () => showScreen(joinScreen));
 backBtns.forEach(btn => btn.addEventListener('click', () => showScreen(startScreen)));
+
 exitBtns.forEach(btn => btn.addEventListener('click', () => {
     confirmText.innerText = 'Czy na pewno chcesz opuścić grę i wrócić do menu głównego?';
     confirmModal.style.display = 'flex';
-    confirmNoBtn.onclick = () => confirmModal.style.display = 'none';
 }));
 
-// Czyszczenie sesji przy wyjściu
-confirmYesBtn.onclick = () => {
-    sessionStorage.removeItem('impostorSession');
-    window.location.reload();
-};
+confirmYesBtn.onclick = () => { sessionStorage.removeItem('impostorSession'); window.location.reload(); };
+confirmNoBtn.onclick = () => confirmModal.style.display = 'none';
 
 joinGameBtn.addEventListener('click', () => { socket.emit('joinGame', { code: gameCodeInput.value, playerName: playerNameInput.value }); });
 startGameBtn.addEventListener('click', () => { socket.emit('startGame', currentRoomCode); });
@@ -197,65 +199,73 @@ submitVoteBtn.addEventListener('click', () => {
     if (selectedPlayer) {
         const votedPlayerId = selectedPlayer.value;
         socket.emit('playerVoted', { roomCode: currentRoomCode, votedPlayerId });
-        if (isRandomMode) {
-            showScreen(gameScreen);
-        } else {
-            submitVoteBtn.disabled = true;
-            voteStatus.innerHTML = 'Twój głos został oddany. Czekanie na innych...';
-        }
+        submitVoteBtn.disabled = true;
+        voteStatus.innerHTML = 'Twój głos został oddany. Czekanie na innych...';
     } else { alert('Musisz kogoś wybrać!'); }
 });
 
-lobbyCategoryTile.addEventListener('click', () => {
-    if (isHost) {
-        showScreen(categoryScreen);
-    }
-});
-
-backToLobbyBtn.addEventListener('click', () => {
-    showScreen(gameLobby);
-});
+lobbyCategoryTile.addEventListener('click', () => { if (isHost) showScreen(categoryScreen); });
+backToLobbyBtn.addEventListener('click', () => showScreen(gameLobby);
 
 categoryTiles.forEach(tile => {
     tile.addEventListener('click', () => {
         const selectedCategory = tile.dataset.category;
-        const selectedIconSrc = tile.querySelector('img').src;
         currentCategoryName.innerText = selectedCategory;
-        currentCategoryIcon.src = selectedIconSrc;
+        currentCategoryIcon.src = tile.querySelector('img').src;
         categorySelect.value = selectedCategory;
         updateSettings();
         showScreen(gameLobby);
     });
 });
 
+playerList.addEventListener('click', (event) => {
+    if (event.target.classList.contains('kick-btn')) {
+        const playerIdToKick = event.target.dataset.playerId;
+        socket.emit('kickPlayer', { roomCode: currentRoomCode, playerIdToKick });
+    }
+});
+
 socket.on('gameCreated', code => { currentRoomCode = code; showScreen(gameLobby); });
 socket.on('joinError', message => { alert(message); });
 
+socket.on('kicked', () => {
+    showModal('Informacja', 'Zostałeś usunięty z lobby przez hosta.', false);
+    sessionStorage.removeItem('impostorSession');
+    setTimeout(() => {
+        window.location.reload();
+    }, 3000);
+});
+
 socket.on('updateLobby', ({ players, settings, hostId }) => {
     playerCount = players.length;
+    isHost = (socket.id === hostId);
     
     playerList.innerHTML = '';
-    // Wizualne odróżnienie rozłączonych graczy
     players.forEach(player => {
         const li = document.createElement('li');
-        li.innerText = player.name + (player.id === hostId ? ' 👑 (Host)' : '');
+        const playerNameSpan = document.createElement('span');
+        playerNameSpan.innerText = player.name + (player.id === hostId ? ' 👑 (Host)' : '');
+        li.appendChild(playerNameSpan);
+
         if (!player.connected) {
             li.style.opacity = '0.5';
-            li.innerText += ' (rozłączony)';
+            playerNameSpan.innerText += ' (rozłączony)';
+        }
+
+        if (isHost && player.id !== socket.id) {
+            const kickBtn = document.createElement('button');
+            kickBtn.innerText = 'Usuń';
+            kickBtn.className = 'kick-btn';
+            kickBtn.dataset.playerId = player.id;
+            li.appendChild(kickBtn);
         }
         playerList.appendChild(li);
     });
 
     gameCodeDisplay.innerText = currentRoomCode;
+    sessionStorage.setItem('impostorSession', JSON.stringify({ roomCode: currentRoomCode, oldSocketId: socket.id }));
 
-    // Zapisz dane do sessionStorage po każdej aktualizacji lobby
-    const sessionData = {
-        roomCode: currentRoomCode,
-        oldSocketId: socket.id
-    };
-    sessionStorage.setItem('impostorSession', JSON.stringify(sessionData));
-
-    impostorsCount.innerText = settings.randomImpostors ? '?' : settings.impostors;
+    impostorsCount.innerText = settings.impostors;
     roundsCount.innerText = settings.rounds;
     impostorHintCheckbox.checked = settings.impostorHint;
     randomImpostorsCheckbox.checked = settings.randomImpostors;
@@ -267,10 +277,8 @@ socket.on('updateLobby', ({ players, settings, hostId }) => {
     const tile = document.querySelector(`.category-tile[data-category="${settings.category}"]`);
     if (tile) { currentCategoryIcon.src = tile.querySelector('img').src; }
     
-    isHost = (socket.id === hostId);
     hostSettings.style.display = isHost ? 'block' : 'none';
     if (isHost) {
-        // Logika przycisku Start
         const connectedPlayers = players.filter(p => p.connected).length;
         if (connectedPlayers < 3) {
             startGameBtn.disabled = true;
@@ -300,6 +308,7 @@ socket.on('gameStarted', (data) => {
     cardRevealed = false; card.classList.remove('is-flipped'); card.style.display = 'block';
     turnCountdown.innerHTML = '';
     revealStatus.innerHTML = '';
+    gameActionContainer.innerHTML = '';
     isRandomMode = data.isRandomMode;
     showScreen(gameScreen);
     if (data.role === 'impostor') {
@@ -311,18 +320,15 @@ socket.on('gameStarted', (data) => {
     }
 });
 
-socket.on('updateRevealStatus', ({ revealedCount, totalPlayers, unrevealedNames }) => {
-    let statusText = `Odkryto kart: ${revealedCount} / ${totalPlayers}`;
-    if (totalPlayers - revealedCount <= 3 && unrevealedNames.length > 0) {
-        statusText += `<br><small>Oczekuję na:</small><div class="unrevealed-list-container"><ul id="unrevealedList">${unrevealedNames.map(name => `<li>${name}</li>`).join('')}</ul></div>`;
-    }
-    revealStatus.innerHTML = statusText;
+socket.on('updateRevealStatus', ({ revealedCount, totalPlayers }) => {
+    revealStatus.innerHTML = `GOTOWI GRACZE: ${revealedCount} / ${totalPlayers}`;
 });
 
 socket.on('startTurnCountdown', (countdown) => {
     card.style.display = 'none';
     revealStatus.innerHTML = '';
-    turnCountdown.innerHTML = `Gra rozpocznie się za: <strong>${countdown}</strong>`;
+    gameActionContainer.innerHTML = '';
+    turnCountdown.innerHTML = `<h2>Gra rozpocznie się za</h2><p>${countdown}</p>`;
 });
 
 socket.on('turnStarted', (playerName) => { showTurnScreen(playerName); });
@@ -334,10 +340,16 @@ socket.on('votingStarted', (players) => {
     votingOptions.innerHTML = '';
     players.forEach(player => {
         if (player.id !== socket.id) {
-            const label = document.createElement('label'); label.className = 'player-vote-label';
-            const radio = document.createElement('input'); radio.type = 'radio'; radio.name = 'vote'; radio.value = player.id;
-            const span = document.createElement('span'); span.innerText = ` ${player.name}`;
-            label.appendChild(radio); label.appendChild(span);
+            const label = document.createElement('label');
+            label.className = 'player-vote-label';
+            const radio = document.createElement('input');
+            radio.type = 'radio';
+            radio.name = 'vote';
+            radio.value = player.id;
+            const span = document.createElement('span');
+            span.innerText = player.name;
+            label.appendChild(radio);
+            label.appendChild(span);
             votingOptions.appendChild(label);
         }
     });
@@ -352,7 +364,9 @@ socket.on('updateActionCounts', ({ toEliminate, toEndRound, totalPlayers }) => {
 
 socket.on('updateVoteStatus', ({ votedCount, totalPlayers, unvotedNames }) => {
     let statusText = `Zagłosowało: ${votedCount} / ${totalPlayers}`;
-    if (unvotedNames && unvotedNames.length > 0) { statusText += `<br><small>Oczekuję na:</small><div>${unvotedNames.join(', ')}</div>`; }
+    if (unvotedNames && unvotedNames.length > 0 && unvotedNames.length < 4) {
+        statusText += `<br><small>Oczekuję na:</small><div>${unvotedNames.join(', ')}</div>`;
+    }
     voteStatus.innerHTML = statusText;
 });
 
@@ -382,12 +396,23 @@ socket.on('gameOver', ({ winner, impostors, password, scores, currentRound, tota
     modal.style.display = 'none';
     showScreen(endGameScreen);
     
-    const myName = playerNameInput.value || `Gracz_${socket.id.substring(0, 4)}`;
-    const myPlayerObject = scores.find(p => p.name === myName);
+    const myPlayerObject = scores.find(p => p.name === playerNameInput.value);
     const amIImpostor = myPlayerObject ? myPlayerObject.role === 'impostor' : false;
 
+    if (winner === 'crewmates') {
+        endGameTitle.innerText = amIImpostor ? '☠️ PRZEGRANA ☠️' : '🎉 WYGRANA! 🎉';
+    } else {
+        endGameTitle.innerText = amIImpostor ? '🏆 WYGRANA! 🏆' : '☠️ PRZEGRANA ☠️';
+    }
+
+    endGameInfo.innerHTML = `
+        <p class="endgame-info-label">Hasłem było:</p>
+        <p class="endgame-password">${password}</p>
+        <p class="endgame-info-label">Impostorami byli:</p>
+        <p class="endgame-impostors">${impostors.join(', ')}</p>
+    `;
+
     if (isFinal) {
-        endGameTitle.innerText = "🏁 KONIEC GRY! 🏁";
         roundInfo.innerText = `Ostateczny wynik po ${totalRounds} rundach.`;
         endGameButtons.innerHTML = `<button id="playAgainFinalBtn">Wróć do lobby</button><button id="exitFinalBtn">Wyjdź do menu</button>`;
         document.getElementById('playAgainFinalBtn').addEventListener('click', () => socket.emit('requestReturnToLobby', currentRoomCode));
@@ -400,25 +425,25 @@ socket.on('gameOver', ({ winner, impostors, password, scores, currentRound, tota
         endGameButtons.innerHTML = `<button id="playAgainBtn">Następna runda</button><div id="readyStatus"></div>`;
         const playAgainBtn = document.getElementById('playAgainBtn');
         playAgainBtn.addEventListener('click', () => { playAgainBtn.disabled = true; socket.emit('requestNewGame', currentRoomCode); });
-        
-        const impostorNames = impostors.join(', ');
-        if (winner === 'crewmates') {
-            endGameTitle.innerText = amIImpostor ? '☠️ RUNDĘ PRZEGRALIŚCIE! ☠️' : '🎉 RUNDĘ WYGRALIŚCIE! 🎉';
-            endGameText.innerText = amIImpostor ? `Zostaliście zdemaskowani! Prawdziwe hasło to: "${password}".` : `Udało się! Impostorami byli: ${impostorNames}.`;
-        } else { // Impostors won
-            endGameTitle.innerText = amIImpostor ? '🏆 RUNDĘ WYGRALIŚCIE! 🏆' : '☠️ RUNDĘ PRZEGRALIŚCIE! ☠️';
-            endGameText.innerText = `Impostorzy wygrali rundę! Prawdziwe hasło to było "${password}". Impostorami byli: ${impostorNames}.`;
-        }
     }
+    
     scoreboard.innerHTML = '';
-    scores.sort((a, b) => b.score - a.score).forEach(player => { const li = document.createElement('li'); li.innerHTML = `<span>${player.name}</span> <span>${player.score} pkt</span>`; scoreboard.appendChild(li); });
+    scores.sort((a, b) => b.score - a.score).forEach(player => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span>${player.name}</span> <span>${player.score} pkt</span>`;
+        scoreboard.appendChild(li);
+    });
 });
 
 socket.on('updateReadyCount', (readyCount, totalPlayers, waitingFor) => {
-    let statusText = `Gotowi: ${readyCount} / ${totalPlayers}`;
-    if (waitingFor.length > 0) { statusText += `<br><small>Oczekuję na: ${waitingFor.join(', ')}</small>` }
     const readyStatus = document.getElementById('readyStatus');
-    if (readyStatus) readyStatus.innerHTML = statusText;
+    if (readyStatus) {
+        let statusText = `Gotowi: ${readyCount} / ${totalPlayers}`;
+        if (waitingFor.length > 0 && waitingFor.length < 4) { 
+            statusText += `<br><small>Oczekuję na: ${waitingFor.join(', ')}</small>`;
+        }
+        readyStatus.innerHTML = statusText;
+    }
 });
 
 socket.on('newGameCountdown', (countdown) => {
@@ -434,7 +459,6 @@ socket.on('returnToLobby', () => {
     cardRevealed = false; card.classList.remove('is-flipped'); card.style.display = 'block';
 });
 
-// Powiadomienie o rozłączeniu tylko w trakcie gry
 socket.on('playerDisconnected', (playerName) => {
     if (!gameLobby.classList.contains('active')) {
         toast.innerText = `Gracz ${playerName} opuścił grę.`;
@@ -445,30 +469,23 @@ socket.on('playerDisconnected', (playerName) => {
     }
 });
 
-socket.on('gameInterrupted', () => {
+socket.on('gameInterrupted', (message) => {
     releaseWakeLock();
-    showModal('Gra przerwana!', 'Jeden z graczy opuścił grę. Wracacie do lobby.');
+    showModal('Gra przerwana!', message, true);
     setTimeout(() => {
         modal.style.display = 'none';
         showScreen(gameLobby);
-    }, 3000);
+    }, 4000);
 });
 
-// Obsługa odpowiedzi serwera na próbę ponownego połączenia
 socket.on('reconnectSuccess', (room) => {
     console.log('Udało się wrócić do gry!', room);
-    
-    // Ustawienie aktualnego kodu pokoju na podstawie danych z sesji
     const session = JSON.parse(sessionStorage.getItem('impostorSession'));
-    if(session) currentRoomCode = session.roomCode;
-
-    // Zaktualizuj sessionStorage nowym ID gniazda, ale zachowaj stary kod pokoju
+    if (session) {
+        currentRoomCode = session.roomCode;
+    }
     sessionStorage.setItem('impostorSession', JSON.stringify({ roomCode: currentRoomCode, oldSocketId: socket.id }));
-
-    // Odśwież widok na podstawie otrzymanych danych
     socket.emit('updateLobby', { players: room.players, settings: room.settings, hostId: room.hostId });
-    
-    // Prosta logika przywracania stanu - na razie zawsze wraca do lobby
     showScreen(gameLobby);
 });
 
@@ -482,7 +499,6 @@ socket.on('reconnectFailed', () => {
     }, 3000);
 });
 
-// Logika WakeLock
 let wakeLock = null;
 const requestWakeLock = async () => {
   if ('wakeLock' in navigator) {
