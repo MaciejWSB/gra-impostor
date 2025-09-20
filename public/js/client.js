@@ -90,12 +90,10 @@ function handleLobbyUpdate({ players, settings, hostId }) {
         const playerNameSpan = document.createElement('span');
         playerNameSpan.innerText = player.name + (player.id === hostId ? ' 👑 (Host)' : '');
         li.appendChild(playerNameSpan);
-
         if (!player.connected) {
             li.style.opacity = '0.5';
             playerNameSpan.innerText += ' (rozłączony)';
         }
-
         if (isHost && player.id !== socket.id) {
             const kickBtn = document.createElement('button');
             kickBtn.innerText = 'Usuń';
@@ -140,13 +138,11 @@ function handleLobbyUpdate({ players, settings, hostId }) {
             startGameBtn.innerText = 'Start!';
         }
     }
-
     waitingMessage.style.display = isHost ? 'none' : 'block';
     if (!isHost) {
         const hostPlayer = players.find(p => p.id === hostId);
         waitingMessage.innerHTML = `Oczekiwanie na rozpoczęcie gry przez hosta (<strong>${hostPlayer ? hostPlayer.name : ''}</strong>)...`;
     }
-
     if(settingsPanel) {
         settingsPanel.classList.remove('difficulty-easy', 'difficulty-medium', 'difficulty-hard');
         settingsPanel.classList.add(`difficulty-${settings.difficulty}`);
@@ -301,9 +297,8 @@ socket.on('updateRevealStatus', ({ revealedCount, totalPlayers }) => {
     revealStatus.innerHTML = `GOTOWI GRACZE: ${revealedCount} / ${totalPlayers}`;
 });
 socket.on('startTurnCountdown', (countdown) => {
-    card.style.display = 'none';
-    revealStatus.innerHTML = '';
-    gameActionContainer.innerHTML = '';
+    // ZMIANA: Karta pozostaje widoczna, a licznik pojawia się pod nią
+    revealStatus.innerHTML = ''; // Ukryj status "GOTOWI GRACZE"
     turnCountdown.innerHTML = `<h2>Gra rozpocznie się za</h2><p>${countdown}</p>`;
 });
 socket.on('turnStarted', (playerName) => { showTurnScreen(playerName); });
@@ -320,8 +315,7 @@ socket.on('votingStarted', (players) => {
             radio.type = 'radio'; radio.name = 'vote'; radio.value = player.id;
             const span = document.createElement('span');
             span.innerText = player.name;
-            label.appendChild(radio);
-            label.appendChild(span);
+            label.appendChild(radio); label.appendChild(span);
             votingOptions.appendChild(label);
         }
     });
@@ -345,10 +339,9 @@ socket.on('voteResult', ({ outcome, playerName, eliminatedPlayerId }) => {
         showModal('Remis!', 'Nikt nie został wyrzucony. Runda toczy się dalej.');
     }
 });
-socket.on('newRound', ({ startingPlayerName, newPlayerCount }) => {
+socket.on('newRound', ({ startingPlayerName }) => {
     if (amI_Eliminated) return;
     amI_Eliminated = false;
-    if (newPlayerCount) playerCount = newPlayerCount;
     modal.style.display = 'none';
     showTurnScreen(startingPlayerName);
 });
@@ -430,7 +423,6 @@ socket.on('reconnectFailed', () => {
     setTimeout(() => { window.location.reload(); }, 3000);
 });
 
-// --- FUNKCJE POMOCNICZE (WAKELOCK) ---
 let wakeLock = null;
 const requestWakeLock = async () => {
   if ('wakeLock' in navigator) {
