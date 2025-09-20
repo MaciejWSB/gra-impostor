@@ -50,9 +50,14 @@ const modalTitle = document.getElementById('modalTitle');
 const modalText = document.getElementById('modalText');
 const modalCloseBtn = document.getElementById('modalCloseBtn');
 const confirmModal = document.getElementById('confirmModal');
+const confirmTitle = document.getElementById('confirmTitle');
 const confirmText = document.getElementById('confirmText');
 const confirmYesBtn = document.getElementById('confirmYesBtn');
 const confirmNoBtn = document.getElementById('confirmNoBtn');
+const impostorGuessModal = document.getElementById('impostorGuessModal');
+const impostorGuessYesBtn = document.getElementById('impostorGuessYesBtn');
+const impostorGuessNoBtn = document.getElementById('impostorGuessNoBtn');
+const impostorGuessBackBtn = document.getElementById('impostorGuessBackBtn');
 const toast = document.getElementById('toast');
 const endGameTitle = document.getElementById('endGameTitle');
 const endGameInfo = document.getElementById('endGameInfo');
@@ -181,19 +186,34 @@ function showTurnScreen(playerName) {
     revealStatus.innerHTML = '';
     turnCountdown.innerHTML = '';
 
-    let buttonsHTML = '<button id="goToVoteBtn">Przejdź do Głosowania</button>';
+    const buttonsHTML = `
+        <button id="goToVoteBtn">Przejdź do Głosowania</button>
+        <button id="guessPasswordBtn" class="secondary">Impostor zgaduje hasło</button>
+    `;
     gameActionContainer.innerHTML = `<h2>ZACZYNA GRACZ:</h2><p>${playerName}</p>${buttonsHTML}<button class="exit-button">Wyjdź z gry</button>`;
     
     gameActionContainer.querySelector('.exit-button').addEventListener('click', () => {
+        confirmTitle.innerText = 'Czy na pewno?';
         confirmText.innerText = 'Czy na pewno chcesz opuścić grę i wrócić do menu głównego?';
         confirmModal.style.display = 'flex';
+        confirmYesBtn.onclick = () => { sessionStorage.removeItem('impostorSession'); window.location.reload(); };
     });
     
-    const goToVoteBtn = document.getElementById('goToVoteBtn');
-    if (goToVoteBtn) {
-        goToVoteBtn.disabled = amI_Eliminated;
-        goToVoteBtn.addEventListener('click', () => { socket.emit('requestVoting', currentRoomCode); });
-    }
+    document.getElementById('goToVoteBtn').addEventListener('click', () => {
+        confirmTitle.innerText = 'Potwierdzenie';
+        confirmText.innerText = 'Czy na pewno chcesz rozpocząć głosowanie dla wszystkich graczy?';
+        confirmModal.style.display = 'flex';
+        confirmYesBtn.onclick = () => {
+            socket.emit('requestVoting', currentRoomCode);
+            confirmModal.style.display = 'none';
+            // Reset to default
+            confirmYesBtn.onclick = () => { sessionStorage.removeItem('impostorSession'); window.location.reload(); };
+        };
+    });
+
+    document.getElementById('guessPasswordBtn').addEventListener('click', () => {
+        impostorGuessModal.style.display = 'flex';
+    });
 }
 
 // --- PODPIĘCIA EVENT LISTENERÓW ---
@@ -214,11 +234,16 @@ createGameBtn.addEventListener('click', () => { socket.emit('createGame', { play
 showJoinScreenBtn.addEventListener('click', () => showScreen(joinScreen));
 backBtns.forEach(btn => btn.addEventListener('click', () => showScreen(startScreen)));
 exitBtns.forEach(btn => btn.addEventListener('click', () => {
+    confirmTitle.innerText = 'Czy na pewno?';
     confirmText.innerText = 'Czy na pewno chcesz opuścić grę i wrócić do menu głównego?';
     confirmModal.style.display = 'flex';
+    confirmYesBtn.onclick = () => { sessionStorage.removeItem('impostorSession'); window.location.reload(); };
 }));
-confirmYesBtn.onclick = () => { sessionStorage.removeItem('impostorSession'); window.location.reload(); };
-confirmNoBtn.onclick = () => confirmModal.style.display = 'none';
+confirmNoBtn.onclick = () => { 
+    confirmModal.style.display = 'none';
+    // Reset to default in case it was changed by vote confirmation
+    confirmYesBtn.onclick = () => { sessionStorage.removeItem('impostorSession'); window.location.reload(); };
+};
 joinGameBtn.addEventListener('click', () => { socket.emit('joinGame', { code: gameCodeInput.value, playerName: playerNameInput.value }); });
 startGameBtn.addEventListener('click', () => { socket.emit('startGame', currentRoomCode); });
 card.addEventListener('click', () => { card.classList.toggle('is-flipped'); if (!cardRevealed) { socket.emit('playerRevealedCard', currentRoomCode); cardRevealed = true; } });
@@ -264,6 +289,17 @@ playerList.addEventListener('click', (event) => {
         socket.emit('kickPlayer', { roomCode: currentRoomCode, playerIdToKick });
     }
 });
+impostorGuessYesBtn.addEventListener('click', () => {
+    socket.emit('impostorGuessed', { roomCode: currentRoomCode, guessCorrect: true });
+    impostorGuessModal.style.display = 'none';
+});
+impostorGuessNoBtn.addEventListener('click', () => {
+    socket.emit('impostorGuessed', { roomCode: currentRoomCode, guessCorrect: false });
+    impostorGuessModal.style.display = 'none';
+});
+impostorGuessBackBtn.addEventListener('click', () => {
+    impostorGuessModal.style.display = 'none';
+});
 
 // --- OBSŁUGA ZDARZEŃ Z SERWERA (SOCKET.ON) ---
 
@@ -297,8 +333,7 @@ socket.on('updateRevealStatus', ({ revealedCount, totalPlayers }) => {
     revealStatus.innerHTML = `GOTOWI GRACZE: ${revealedCount} / ${totalPlayers}`;
 });
 socket.on('startTurnCountdown', (countdown) => {
-    // ZMIANA: Karta pozostaje widoczna, a licznik pojawia się pod nią
-    revealStatus.innerHTML = ''; // Ukryj status "GOTOWI GRACZE"
+    revealStatus.innerHTML = '';
     turnCountdown.innerHTML = `<h2>Gra rozpocznie się za</h2><p>${countdown}</p>`;
 });
 socket.on('turnStarted', (playerName) => { showTurnScreen(playerName); });
@@ -423,6 +458,7 @@ socket.on('reconnectFailed', () => {
     setTimeout(() => { window.location.reload(); }, 3000);
 });
 
+// --- FUNKCJE POMOCNICZE (WAKELOCK) ---
 let wakeLock = null;
 const requestWakeLock = async () => {
   if ('wakeLock' in navigator) {

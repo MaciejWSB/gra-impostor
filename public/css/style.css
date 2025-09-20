@@ -85,8 +85,11 @@ li {
 
 /* === EKRAN LOBBY I USTAWIENIA === */
 #gameLobby .exit-button, #endGameScreen .exit-button, #votingScreen .exit-button { 
-    margin-top: auto; padding-top: 20px; background-image: none;
-    background-color: transparent; border: 2px solid var(--color-border);
+    margin-top: auto; 
+    padding-top: 20px; 
+    background-image: none;
+    background-color: transparent;
+    border: 2px solid var(--color-border);
 }
 #hostSettings h3 { margin-top: 20px; }
 #hostSettings .player-list-container { margin-bottom: 20px; width: 100%;}
@@ -181,16 +184,27 @@ input:checked + .slider:before { transform: translateX(26px); }
 #turnCountdown p { font-family: var(--font-header); font-size: 4rem; color: var(--color-orange); }
 
 #gameActionContainer {
-    width: 100%; max-width: 350px; /* ZMIANA: Ograniczenie szerokości kontenera */
+    width: 100%; max-width: 350px;
     margin-top: auto; margin-bottom: 5vh; display: flex; flex-direction: column;
     gap: 15px; align-items: center; 
 }
 #gameActionContainer h2 { font-size: 1.5rem; color: var(--color-text-muted); }
 #gameActionContainer p { font-family: var(--font-header); font-size: 2.5rem; color: var(--color-orange); }
 #gameActionContainer .exit-button {
-    max-width: 300px; /* ZMIANA: Węższy przycisk wyjścia */
+    max-width: 300px;
+    background-image: none;
+    background-color: transparent;
+    border: 2px solid var(--color-border);
+    font-size: 0.9rem;
+    padding: 10px 20px;
 }
-
+#gameActionContainer button.secondary {
+    max-width: 300px;
+    background-image: none;
+    background-color: var(--color-border);
+    font-size: 0.9rem;
+    padding: 10px 20px;
+}
 
 /* EKRAN GŁOSOWANIA */
 #votingScreen { width: 100%;}
@@ -232,6 +246,20 @@ input:checked + .slider:before { transform: translateX(26px); }
     background-color: var(--color-panel); padding: 25px;
     border-radius: var(--border-radius); border: 1px solid var(--color-border);
     width: 100%; max-width: 400px;
+}
+.modal-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 20px;
+}
+.modal-buttons button {
+    width: 100%;
+    margin: 0;
+}
+.modal-buttons button.secondary {
+    background-image: none;
+    background-color: var(--color-border);
 }
 
 .toast {

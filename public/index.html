@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Bungee&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/style.css?v=1.6">
+    <link rel="stylesheet" href="/css/style.css?v=1.7">
 </head>
 
 <body>
@@ -166,16 +166,31 @@
     </div>
     <div id="confirmModal" class="modal-backdrop">
         <div class="modal-content">
-            <h2>Czy na pewno?</h2>
+            <h2 id="confirmTitle">Czy na pewno?</h2>
             <p id="confirmText"></p>
-            <button id="confirmYesBtn">Tak</button>
-            <button id="confirmNoBtn">Nie</button>
+            <div class="modal-buttons">
+                <button id="confirmYesBtn">Tak</button>
+                <button id="confirmNoBtn">Nie</button>
+            </div>
         </div>
     </div>
+    
+    <div id="impostorGuessModal" class="modal-backdrop">
+        <div class="modal-content">
+            <h2>Czy impostor prawidłowo zgadł hasło?</h2>
+            <p>Ta akcja zakończy rundę.</p>
+            <div class="modal-buttons">
+                <button id="impostorGuessYesBtn">Tak (Impostor Wygrywa)</button>
+                <button id="impostorGuessNoBtn">Nie (Detektywi Wygrywają)</button>
+                <button id="impostorGuessBackBtn" class="secondary">Cofnij</button>
+            </div>
+        </div>
+    </div>
+    
     <div id="toast" class="toast"></div>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script src="/js/client.js?v=1.6"></script>
+    <script src="/js/client.js?v=1.7"></script>
 </body>
 
 </html>

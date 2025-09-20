@@ -62,7 +62,9 @@ const wordDatabase = {
         }
     },
     'League of Legends': {
-        // ... (bez zmian)
+        'easy': { 'Baron': 'Wzmocnienie', 'Wieża': 'Struktura', 'Minion': 'Farma', 'NEXUS': 'Baza', 'Gank': 'Dżungler' },
+        'medium': { 'Inhibitor': 'Superminion', 'Smok': 'Dusza', 'Dżungla': 'Potwory', 'Ward': 'Wizja', 'Flash': 'Czar' },
+        'hard': { 'Kiting': 'ADC', 'Split push': 'Presja', 'Roaming': 'Wsparcie', 'Peel': 'Obrońca', 'Wave management': 'Kontrola' }
     }
 };
 
@@ -86,7 +88,7 @@ function initiateGame(roomCode, io) {
     room.gameState = 'revealing';
     room.revealedPlayers = new Set();
     room.eliminatedPlayers = [];
-    room.votesAvailable = room.settings.randomImpostors ? room.players.length + 1 : room.settings.impostors;
+    room.votesAvailable = room.settings.impostors;
     room.currentRound = (room.currentRound || 0) + 1;
     
     const connectedPlayers = room.players.filter(p => p.connected);
@@ -112,21 +114,15 @@ function initiateGame(roomCode, io) {
     let impostorIds = new Set();
     let playersCopy = [...players];
     
-    // ZMIANA: Tasowanie graczy przed wyborem impostora
     for (let i = playersCopy.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [playersCopy[i], playersCopy[j]] = [playersCopy[j], playersCopy[i]];
     }
 
     let impostorsInThisRound = settings.impostors;
-    if (settings.randomImpostors) {
-        const maxImpostors = players.length;
-        impostorsInThisRound = Math.floor(Math.random() * (maxImpostors + 1));
-    }
-
     for (let i = 0; i < impostorsInThisRound; i++) {
         if (playersCopy.length === 0) break;
-        impostorIds.add(playersCopy.pop().id); // Bierzemy ostatniego z potasowanej talii
+        impostorIds.add(playersCopy.pop().id);
     }
     room.impostorIds = impostorIds;
 
@@ -136,8 +132,7 @@ function initiateGame(roomCode, io) {
         let dataToSend = {
             role: player.role,
             password: isImpostor ? null : room.chosenWord,
-            hint: (isImpostor && settings.impostorHint) ? hint : null,
-            isRandomMode: settings.randomImpostors
+            hint: (isImpostor && settings.impostorHint) ? hint : null
         };
         io.to(player.id).emit('gameStarted', dataToSend);
     });
@@ -163,31 +158,52 @@ function getNextStartingPlayer(room) {
     return room.players.find(p => p.id === nextPlayerId);
 }
 
-function checkWinConditions(room, roomCode, io) {
+function checkWinConditions(room, roomCode, io, forcedWinner = null) {
+    let winner = forcedWinner;
     const activePlayers = room.players.filter(p => p.connected && !room.eliminatedPlayers.includes(p.id));
-    const activeImpostors = activePlayers.filter(p => p.role === 'impostor' && !room.eliminatedPlayers.includes(p.id));
-    let gameOverData = null;
+    const activeImpostors = activePlayers.filter(p => p.role === 'impostor');
 
-    if (activeImpostors.length === 0) {
-        gameOverData = { winner: 'crewmates' };
-    } else if (activeImpostors.length >= activePlayers.length / 2) {
-        gameOverData = { winner: 'impostors' };
-        room.players.forEach(p => { if (p.role === 'impostor') p.score += 5; });
-    } else if (room.votesAvailable <= 0 && !room.settings.randomImpostors) {
-        gameOverData = { winner: 'impostors' };
-        room.players.forEach(p => { if (p.role === 'impostor') p.score += 5; });
+    if (!winner) {
+        if (activeImpostors.length === 0) {
+            winner = 'crewmates';
+        } else if (activeImpostors.length >= activePlayers.length / 2) {
+            winner = 'impostors';
+        } else if (room.votesAvailable <= 0) {
+            winner = 'impostors';
+        }
     }
 
-    if (gameOverData) {
+    if (winner) {
+        if (winner === 'crewmates') {
+            const initialImpostorCount = room.impostorIds.size;
+            activePlayers.forEach(player => {
+                if (player.role === 'crewmate') {
+                    player.score += initialImpostorCount;
+                }
+            });
+        } else if (winner === 'impostors') {
+            const survivingImpostors = activeImpostors;
+            const survivingImpostorCount = survivingImpostors.length;
+            survivingImpostors.forEach(impostor => {
+                impostor.score += 2;
+                if (survivingImpostorCount > 1) {
+                    impostor.score += (survivingImpostorCount - 1);
+                }
+            });
+        }
+
         room.gameState = 'ended';
-        gameOverData.scores = room.players.map(p => ({ name: p.name, score: p.score, role: p.role }));
-        gameOverData.currentRound = room.currentRound;
-        gameOverData.totalRounds = room.settings.rounds;
-        gameOverData.impostors = room.players.filter(p => room.impostorIds.has(p.id)).map(p => p.name);
-        gameOverData.password = room.chosenWord;
-        if (room.currentRound >= room.settings.rounds) gameOverData.isFinal = true;
+        const gameOverData = {
+            winner: winner,
+            scores: room.players.map(p => ({ name: p.name, score: p.score, role: p.role })),
+            currentRound: room.currentRound,
+            totalRounds: room.settings.rounds,
+            impostors: room.players.filter(p => room.impostorIds.has(p.id)).map(p => p.name),
+            password: room.chosenWord,
+            isFinal: room.currentRound >= room.settings.rounds
+        };
         
-        setTimeout(() => io.to(roomCode).emit('gameOver', gameOverData), 3000);
+        setTimeout(() => io.to(roomCode).emit('gameOver', gameOverData), 1000);
         return true;
     }
     return false;

@@ -98,7 +98,7 @@ function initializeSocket(io) {
             if (room && room.hostId === socket.id) {
                 if (!settings.randomImpostors) {
                     const maxImpostors = getMaxImpostors(room.players.length);
-                    if (settings.impostors > maxImpostors) { settings.impostors = maxImpostors; }
+                    settings.impostors = Math.max(1, Math.min(settings.impostors, maxImpostors));
                 }
                 room.settings = settings;
                 io.to(roomCode).emit('updateLobby', { players: room.players, settings: room.settings, hostId: room.hostId });
@@ -132,7 +132,6 @@ function initializeSocket(io) {
                 const connectedPlayersCount = room.players.filter(p => p.connected).length;
                 if (room.revealedPlayers.size === connectedPlayersCount) {
                     let countdown = 5;
-                    // ZMIANA: Wysyłamy odliczanie od razu, bez czekania
                     const interval = setInterval(() => {
                         io.to(roomCode).emit('startTurnCountdown', countdown);
                         countdown--;
@@ -159,10 +158,10 @@ function initializeSocket(io) {
 
         socket.on('playerVoted', ({ roomCode, votedPlayerId }) => {
             const room = gameRooms[roomCode];
-            if (!room) return;
+            if (!room || room.gameState !== 'voting') return;
     
             const activePlayers = room.players.filter(p => p.connected && !room.eliminatedPlayers.includes(p.id));
-            if (room.gameState === 'voting' && !room.votedPlayers.has(socket.id)) {
+            if (!room.votedPlayers.has(socket.id)) {
                 room.votedPlayers.add(socket.id);
                 room.votes[socket.id] = votedPlayerId;
                 
@@ -172,10 +171,8 @@ function initializeSocket(io) {
                 if (room.votedPlayers.size === activePlayers.length) {
                     const voteCounts = {};
                     Object.values(room.votes).forEach(votedId => { voteCounts[votedId] = (voteCounts[votedId] || 0) + 1; });
-
                     let maxVotes = 0; let playerToEliminateId = null;
                     for (const playerId in voteCounts) { if (voteCounts[playerId] > maxVotes) { maxVotes = voteCounts[playerId]; playerToEliminateId = playerId; } }
-                    
                     const multipleMax = Object.values(voteCounts).filter(v => v === maxVotes).length > 1;
 
                     if (playerToEliminateId && !multipleMax) {
@@ -183,9 +180,10 @@ function initializeSocket(io) {
                         const eliminatedPlayer = room.players.find(p => p.id === playerToEliminateId);
                         
                         if (eliminatedPlayer.role === 'impostor') {
-                            room.players.forEach(voter => {
-                                if(room.votes[voter.id] === playerToEliminateId) {
-                                    voter.score += 2;
+                            Object.keys(room.votes).forEach(voterId => {
+                                if (room.votes[voterId] === playerToEliminateId) {
+                                    const voter = room.players.find(p => p.id === voterId);
+                                    if (voter) voter.score += 2;
                                 }
                             });
                         }
@@ -205,6 +203,17 @@ function initializeSocket(io) {
                             io.to(roomCode).emit('newRound', { startingPlayerName: startingPlayer.name });
                         }, 3000);
                     }
+                }
+            }
+        });
+
+        socket.on('impostorGuessed', ({ roomCode, guessCorrect }) => {
+            const room = gameRooms[roomCode];
+            if (room && room.gameState !== 'ended') {
+                const currentPlayerId = room.playerOrder[room.currentPlayerIndex];
+                if(socket.id === currentPlayerId){ // Sprawdź czy to obecny gracz zgaduje
+                    const winner = guessCorrect ? 'impostors' : 'crewmates';
+                    checkWinConditions(room, roomCode, io, winner);
                 }
             }
         });
