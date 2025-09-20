@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Bungee&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/style.css?v=1.4">
+    <link rel="stylesheet" href="/css/style.css?v=1.6">
 </head>
 
 <body>
@@ -19,7 +19,7 @@
         </div>
         <div class="start-screen-bottom">
             <label for="playerNameInput" class="input-label">Wprowadź swoją nazwę</label>
-            <input type="text" id="playerNameInput">
+            <input type="text" id="playerNameInput" maxlength="12" placeholder="Maks. 12 znaków">
             <div class="start-buttons-container">
                 <button id="createGameBtn">Utwórz nową grę</button>
                 <button id="showJoinScreenBtn">Dołącz do gry</button>
@@ -175,7 +175,7 @@
     <div id="toast" class="toast"></div>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script src="/js/client.js?v=1.5"></script>
+    <script src="/js/client.js?v=1.6"></script>
 </body>
 
 </html>
