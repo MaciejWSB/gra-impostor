@@ -126,16 +126,42 @@ li { background-color: var(--color-panel); border: 1px solid var(--color-border)
 #lobbyCategoryTile #currentCategoryName { font-size: 0.9rem; }
 
 /* ZMIANA: Przyciski trudności w jednej linii i lepsze podświetlenie */
-.difficulty-selector { display: flex; justify-content: center; width: 100%; gap: 10px; }
+.difficulty-selector { display: flex; justify-content: center; width: 100%; gap: 5px; } /* Zmniejszony odstęp */
 .difficulty-btn {
     flex-grow: 1;
     margin: 0;
     background-image: none;
     background-color: var(--color-panel);
     border: 2px solid var(--color-border);
-    opacity: 0.5; /* Wyszarzenie niewybranych */
+    opacity: 0.5;
     transform: scale(1);
     filter: grayscale(80%);
+    /* Zmniejszona czcionka i padding */
+    font-size: 0.9rem;
+    padding: 12px 5px;
+    letter-spacing: 1px;
+}
+
+.toast {
+    position: fixed; /* Kluczowe, aby nie rozpychać strony */
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%); /* Idealne centrowanie */
+    background-color: var(--color-red);
+    color: white;
+    padding: 12px 22px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    z-index: 2000;
+    opacity: 0;
+    visibility: hidden; /* Ukryty, gdy nieaktywny */
+    transition: opacity 0.4s, visibility 0.4s;
+    text-align: center;
+}
+
+.toast.show {
+    opacity: 1;
+    visibility: visible; /* Widoczny, gdy aktywny */
 }
 .difficulty-btn.selected, .difficulty-btn:hover {
     opacity: 1;

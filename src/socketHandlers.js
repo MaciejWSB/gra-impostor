@@ -5,12 +5,31 @@ const {
     getNextStartingPlayer,
     checkWinConditions,
     checkActionsAndProceed,
-    getRevealStatus
+    getRevealStatus,
+    handlePlayerDisconnect,
+    handlePlayerReconnect
 } = require('./gameLogic.js');
+
+// NOWOŚĆ: Mapa do szybkiego znajdowania pokoju po ID gniazda
+const socketToRoomMap = {};
 
 function initializeSocket(io) {
     io.on('connection', (socket) => {
         console.log(`✅ Gracz połączył się: ${socket.id}`);
+
+        // NOWOŚĆ: Nasłuch na próbę ponownego połączenia
+        socket.on('attemptReconnect', ({ roomCode, oldSocketId }) => {
+            const room = handlePlayerReconnect(roomCode, oldSocketId, socket.id);
+            if (room) {
+                socketToRoomMap[socket.id] = roomCode;
+                socket.join(roomCode);
+                // Wyślij graczowi aktualny stan, aby mógł wznowić grę
+                socket.emit('reconnectSuccess', room);
+                io.to(roomCode).emit('updateLobby', { players: room.players, settings: room.settings, hostId: room.hostId });
+            } else {
+                socket.emit('reconnectFailed');
+            }
+        });
 
         socket.on('createGame', ({ playerName }) => {
             const roomCode = Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -23,8 +42,18 @@ function initializeSocket(io) {
             };
             const room = gameRooms[roomCode];
             socket.join(roomCode);
-            const player = { id: socket.id, name: playerName || `Gracz_${socket.id.substring(0, 4)}`, score: 0 };
+            socketToRoomMap[socket.id] = roomCode;
+
+            // MODYFIKACJA: Dodanie pól dla logiki ponownego połączenia
+            const player = {
+                id: socket.id,
+                name: playerName || `Gracz_${socket.id.substring(0, 4)}`,
+                score: 0,
+                connected: true,
+                reconnectTimer: null
+            };
             room.players.push(player);
+
             socket.emit('gameCreated', roomCode);
             io.to(roomCode).emit('updateLobby', { players: room.players, settings: room.settings, hostId: room.hostId });
         });
@@ -43,13 +72,24 @@ function initializeSocket(io) {
                     return;
                 }
                 socket.join(roomCode);
-                const player = { id: socket.id, name: playerName || `Gracz_${socket.id.substring(0, 4)}`, score: 0 };
+                socketToRoomMap[socket.id] = roomCode;
+
+                // MODYFIKACJA: Dodanie pól dla logiki ponownego połączenia
+                const player = {
+                    id: socket.id,
+                    name: playerName || `Gracz_${socket.id.substring(0, 4)}`,
+                    score: 0,
+                    connected: true,
+                    reconnectTimer: null
+                };
                 room.players.push(player);
+
                 socket.emit('gameCreated', roomCode);
                 io.to(roomCode).emit('updateLobby', { players: room.players, settings: room.settings, hostId: room.hostId });
             } else { socket.emit('joinError', 'Nie znaleziono gry o takim kodzie.'); }
         });
 
+        // ... (reszta eventów jak 'updateSettings', 'startGame' bez zmian) ...
         socket.on('updateSettings', ({ roomCode, settings }) => {
             const room = gameRooms[roomCode];
             if (room && room.hostId === socket.id) {
@@ -68,7 +108,13 @@ function initializeSocket(io) {
                 if (room.players.length < 3) {
                     return;
                 }
-                room.players.forEach(p => p.score = 0);
+                // Upewnij się, że wszyscy gracze są oznaczeni jako połączeni na start gry
+                room.players.forEach(p => {
+                    p.score = 0;
+                    p.connected = true;
+                    clearTimeout(p.reconnectTimer);
+                    p.reconnectTimer = null;
+                });
                 room.currentRound = 0;
                 room.usedWords = new Set();
                 initiateGame(roomCode, io);
@@ -108,7 +154,7 @@ function initializeSocket(io) {
                 }
             }
         });
-
+        
         socket.on('playerVoted', ({ roomCode, votedPlayerId }) => {
             const room = gameRooms[roomCode];
             if (!room) return;
@@ -183,7 +229,7 @@ function initializeSocket(io) {
                 checkActionsAndProceed(room, roomCode, io);
             }
         });
-
+        
         socket.on('requestNewGame', (roomCode) => {
             const room = gameRooms[roomCode];
             if (room) {
@@ -219,36 +265,16 @@ function initializeSocket(io) {
             }
         });
 
+        // MODYFIKACJA: Całkowicie nowa logika rozłączania
         socket.on('disconnect', () => {
             console.log(`❌ Gracz rozłączył się: ${socket.id}`);
-            for (const roomCode in gameRooms) {
-                const room = gameRooms[roomCode];
-                const playerIndex = room.players.findIndex(p => p.id === socket.id);
-                if (playerIndex > -1) {
-                    const disconnectedPlayer = room.players[playerIndex];
-                    room.players.splice(playerIndex, 1);
-                    io.to(roomCode).emit('playerDisconnected', disconnectedPlayer.name);
+            const roomCode = socketToRoomMap[socket.id];
 
-                    if (room.players.length === 0) {
-                        delete gameRooms[roomCode];
-                        console.log(`[${roomCode}] Pokój jest pusty, usuwam.`);
-                        return;
-                    }
-
-                    if (room.hostId === socket.id && room.players.length > 0) {
-                        room.hostId = room.players[0].id;
-                        console.log(`[${roomCode}] Host się rozłączył. Nowym hostem jest ${room.hostId}`);
-                    }
-
-                    if (room.gameState !== 'lobby') {
-                        io.to(roomCode).emit('gameInterrupted');
-                        io.to(roomCode).emit('updateLobby', { players: room.players, settings: room.settings, hostId: room.hostId });
-                    } else {
-                        io.to(roomCode).emit('updateLobby', { players: room.players, settings: room.settings, hostId: room.hostId });
-                    }
-                    break;
-                }
+            if (roomCode && gameRooms[roomCode]) {
+                handlePlayerDisconnect(io, roomCode, socket.id);
             }
+            
+            delete socketToRoomMap[socket.id];
         });
     });
 }

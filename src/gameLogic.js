@@ -11,6 +11,7 @@ const wordDatabase = {
     }
 };
 
+// MODYFIKACJA: Przeniesione z socketHandlers, aby było dostępne globalnie
 const gameRooms = {};
 
 function getMaxImpostors(playerCount) {
@@ -198,6 +199,71 @@ function checkActionsAndProceed(room, roomCode, io) {
     }
 }
 
+// NOWOŚĆ: Funkcja do trwałego usunięcia gracza
+function removePlayer(io, roomCode, playerId) {
+    const room = gameRooms[roomCode];
+    if (!room) return;
+
+    const playerIndex = room.players.findIndex(p => p.id === playerId);
+    if (playerIndex === -1) return;
+
+    const disconnectedPlayerName = room.players[playerIndex].name;
+    room.players.splice(playerIndex, 1);
+    io.to(roomCode).emit('playerDisconnected', disconnectedPlayerName);
+
+    if (room.players.length === 0) {
+        delete gameRooms[roomCode];
+        console.log(`[${roomCode}] Pokój jest pusty, usuwam.`);
+        return;
+    }
+
+    if (room.hostId === playerId) {
+        room.hostId = room.players[0].id;
+        console.log(`[${roomCode}] Host się rozłączył. Nowym hostem jest ${room.players[0].name}`);
+    }
+
+    if (room.gameState !== 'lobby') {
+        io.to(roomCode).emit('gameInterrupted');
+    }
+    
+    io.to(roomCode).emit('updateLobby', { players: room.players, settings: room.settings, hostId: room.hostId });
+}
+
+// NOWOŚĆ: Logika obsługi rozłączenia gracza
+function handlePlayerDisconnect(io, roomCode, playerId) {
+    const room = gameRooms[roomCode];
+    const player = room.players.find(p => p.id === playerId);
+    if (!player || !player.connected) return;
+
+    player.connected = false;
+    console.log(`Gracz ${player.name} rozłączony. Oczekiwanie 20 minut na powrót.`);
+    
+    // Zaktualizuj lobby, aby pokazać status "rozłączony"
+    io.to(roomCode).emit('updateLobby', { players: room.players, settings: room.settings, hostId: room.hostId });
+    
+    player.reconnectTimer = setTimeout(() => {
+        console.log(`Gracz ${player.name} nie wrócił na czas i został trwale usunięty.`);
+        removePlayer(io, roomCode, playerId);
+    }, 1200000); // 20 minut
+}
+
+// NOWOŚĆ: Logika obsługi ponownego połączenia gracza
+function handlePlayerReconnect(roomCode, oldPlayerId, newSocketId) {
+    const room = gameRooms[roomCode];
+    if (!room) return null;
+
+    const player = room.players.find(p => p.id === oldPlayerId);
+    if (!player || player.connected) return null;
+
+    clearTimeout(player.reconnectTimer);
+    player.reconnectTimer = null;
+    player.connected = true;
+    player.id = newSocketId; // Najważniejszy krok: aktualizacja ID gniazda
+
+    console.log(`Gracz ${player.name} pomyślnie wrócił do gry!`);
+    return room;
+}
+
 module.exports = {
     gameRooms,
     getMaxImpostors,
@@ -205,5 +271,7 @@ module.exports = {
     initiateGame,
     getNextStartingPlayer,
     checkWinConditions,
-    checkActionsAndProceed
+    checkActionsAndProceed,
+    handlePlayerDisconnect,
+    handlePlayerReconnect
 };

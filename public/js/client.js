@@ -66,6 +66,18 @@ const currentCategoryIcon = document.getElementById('currentCategoryIcon');
 const difficultySelector = document.querySelector('.difficulty-selector');
 const settingsPanel = document.querySelector('.settings-panel');
 
+// Logika próby ponownego połączenia po załadowaniu strony
+window.addEventListener('load', () => {
+    const sessionData = JSON.parse(sessionStorage.getItem('impostorSession'));
+    if (sessionData && sessionData.roomCode && sessionData.oldSocketId) {
+        console.log('Znaleziono zapisaną sesję, próba powrotu do gry...');
+        socket.emit('attemptReconnect', {
+            roomCode: sessionData.roomCode,
+            oldSocketId: sessionData.oldSocketId
+        });
+    }
+});
+
 if (difficultySelector) {
     difficultySelector.addEventListener('click', (event) => {
         if (event.target.classList.contains('difficulty-btn')) {
@@ -148,9 +160,15 @@ backBtns.forEach(btn => btn.addEventListener('click', () => showScreen(startScre
 exitBtns.forEach(btn => btn.addEventListener('click', () => {
     confirmText.innerText = 'Czy na pewno chcesz opuścić grę i wrócić do menu głównego?';
     confirmModal.style.display = 'flex';
-    confirmYesBtn.onclick = () => window.location.reload();
     confirmNoBtn.onclick = () => confirmModal.style.display = 'none';
 }));
+
+// Czyszczenie sesji przy wyjściu
+confirmYesBtn.onclick = () => {
+    sessionStorage.removeItem('impostorSession');
+    window.location.reload();
+};
+
 joinGameBtn.addEventListener('click', () => { socket.emit('joinGame', { code: gameCodeInput.value, playerName: playerNameInput.value }); });
 startGameBtn.addEventListener('click', () => { socket.emit('startGame', currentRoomCode); });
 card.addEventListener('click', () => { card.classList.toggle('is-flipped'); if (!cardRevealed) { socket.emit('playerRevealedCard', currentRoomCode); cardRevealed = true; } });
@@ -212,12 +230,31 @@ categoryTiles.forEach(tile => {
 
 socket.on('gameCreated', code => { currentRoomCode = code; showScreen(gameLobby); });
 socket.on('joinError', message => { alert(message); });
+
 socket.on('updateLobby', ({ players, settings, hostId }) => {
     playerCount = players.length;
     
     playerList.innerHTML = '';
-    players.forEach(player => { const li = document.createElement('li'); li.innerText = player.name + (player.id === hostId ? ' 👑 (Host)' : ''); playerList.appendChild(li); });
+    // Wizualne odróżnienie rozłączonych graczy
+    players.forEach(player => {
+        const li = document.createElement('li');
+        li.innerText = player.name + (player.id === hostId ? ' 👑 (Host)' : '');
+        if (!player.connected) {
+            li.style.opacity = '0.5';
+            li.innerText += ' (rozłączony)';
+        }
+        playerList.appendChild(li);
+    });
+
     gameCodeDisplay.innerText = currentRoomCode;
+
+    // Zapisz dane do sessionStorage po każdej aktualizacji lobby
+    const sessionData = {
+        roomCode: currentRoomCode,
+        oldSocketId: socket.id
+    };
+    sessionStorage.setItem('impostorSession', JSON.stringify(sessionData));
+
     impostorsCount.innerText = settings.randomImpostors ? '?' : settings.impostors;
     roundsCount.innerText = settings.rounds;
     impostorHintCheckbox.checked = settings.impostorHint;
@@ -229,10 +266,13 @@ socket.on('updateLobby', ({ players, settings, hostId }) => {
     currentCategoryName.innerText = settings.category;
     const tile = document.querySelector(`.category-tile[data-category="${settings.category}"]`);
     if (tile) { currentCategoryIcon.src = tile.querySelector('img').src; }
+    
     isHost = (socket.id === hostId);
     hostSettings.style.display = isHost ? 'block' : 'none';
     if (isHost) {
-        if (playerCount < 3) {
+        // Logika przycisku Start
+        const connectedPlayers = players.filter(p => p.connected).length;
+        if (connectedPlayers < 3) {
             startGameBtn.disabled = true;
             startGameBtn.innerText = 'Potrzeba min. 3 graczy';
         } else {
@@ -252,7 +292,9 @@ socket.on('updateLobby', ({ players, settings, hostId }) => {
         settingsPanel.classList.add(`difficulty-${settings.difficulty}`);
     }
 });
+
 socket.on('gameStarted', (data) => {
+    requestWakeLock();
     amI_Eliminated = false;
     modal.style.display = 'none';
     cardRevealed = false; card.classList.remove('is-flipped'); card.style.display = 'block';
@@ -268,6 +310,7 @@ socket.on('gameStarted', (data) => {
         passwordContainer.innerHTML = `Hasło: <strong>${data.password}</strong>`;
     }
 });
+
 socket.on('updateRevealStatus', ({ revealedCount, totalPlayers, unrevealedNames }) => {
     let statusText = `Odkryto kart: ${revealedCount} / ${totalPlayers}`;
     if (totalPlayers - revealedCount <= 3 && unrevealedNames.length > 0) {
@@ -275,12 +318,15 @@ socket.on('updateRevealStatus', ({ revealedCount, totalPlayers, unrevealedNames 
     }
     revealStatus.innerHTML = statusText;
 });
+
 socket.on('startTurnCountdown', (countdown) => {
     card.style.display = 'none';
     revealStatus.innerHTML = '';
     turnCountdown.innerHTML = `Gra rozpocznie się za: <strong>${countdown}</strong>`;
 });
+
 socket.on('turnStarted', (playerName) => { showTurnScreen(playerName); });
+
 socket.on('votingStarted', (players) => {
     showScreen(votingScreen);
     submitVoteBtn.disabled = false;
@@ -296,17 +342,20 @@ socket.on('votingStarted', (players) => {
         }
     });
 });
+
 socket.on('updateActionCounts', ({ toEliminate, toEndRound, totalPlayers }) => {
     const voteCountDisplay = document.getElementById('voteCountDisplay');
     const endRoundCountDisplay = document.getElementById('endRoundCountDisplay');
     if (voteCountDisplay) voteCountDisplay.innerText = `(${toEliminate}/${totalPlayers})`;
     if (endRoundCountDisplay) endRoundCountDisplay.innerText = `(${toEndRound}/${totalPlayers})`;
 });
+
 socket.on('updateVoteStatus', ({ votedCount, totalPlayers, unvotedNames }) => {
     let statusText = `Zagłosowało: ${votedCount} / ${totalPlayers}`;
     if (unvotedNames && unvotedNames.length > 0) { statusText += `<br><small>Oczekuję na:</small><div>${unvotedNames.join(', ')}</div>`; }
     voteStatus.innerHTML = statusText;
 });
+
 socket.on('voteResult', ({ outcome, playerName, eliminatedPlayerId }) => {
     if (outcome === 'eliminated') {
         if (eliminatedPlayerId === socket.id) {
@@ -319,6 +368,7 @@ socket.on('voteResult', ({ outcome, playerName, eliminatedPlayerId }) => {
         showModal('Remis!', 'Nikt nie został wyrzucony. Runda toczy się dalej.');
     }
 });
+
 socket.on('newRound', ({ startingPlayerName, newPlayerCount }) => {
     if (amI_Eliminated) return;
     amI_Eliminated = false;
@@ -326,7 +376,9 @@ socket.on('newRound', ({ startingPlayerName, newPlayerCount }) => {
     modal.style.display = 'none';
     showTurnScreen(startingPlayerName);
 });
+
 socket.on('gameOver', ({ winner, impostors, password, scores, currentRound, totalRounds, isFinal }) => {
+    releaseWakeLock();
     modal.style.display = 'none';
     showScreen(endGameScreen);
     
@@ -339,7 +391,10 @@ socket.on('gameOver', ({ winner, impostors, password, scores, currentRound, tota
         roundInfo.innerText = `Ostateczny wynik po ${totalRounds} rundach.`;
         endGameButtons.innerHTML = `<button id="playAgainFinalBtn">Wróć do lobby</button><button id="exitFinalBtn">Wyjdź do menu</button>`;
         document.getElementById('playAgainFinalBtn').addEventListener('click', () => socket.emit('requestReturnToLobby', currentRoomCode));
-        document.getElementById('exitFinalBtn').addEventListener('click', () => window.location.reload());
+        document.getElementById('exitFinalBtn').addEventListener('click', () => {
+            sessionStorage.removeItem('impostorSession');
+            window.location.reload();
+        });
     } else {
         roundInfo.innerText = `Koniec rundy ${currentRound} / ${totalRounds}`;
         endGameButtons.innerHTML = `<button id="playAgainBtn">Następna runda</button><div id="readyStatus"></div>`;
@@ -358,31 +413,89 @@ socket.on('gameOver', ({ winner, impostors, password, scores, currentRound, tota
     scoreboard.innerHTML = '';
     scores.sort((a, b) => b.score - a.score).forEach(player => { const li = document.createElement('li'); li.innerHTML = `<span>${player.name}</span> <span>${player.score} pkt</span>`; scoreboard.appendChild(li); });
 });
+
 socket.on('updateReadyCount', (readyCount, totalPlayers, waitingFor) => {
     let statusText = `Gotowi: ${readyCount} / ${totalPlayers}`;
     if (waitingFor.length > 0) { statusText += `<br><small>Oczekuję na: ${waitingFor.join(', ')}</small>` }
     const readyStatus = document.getElementById('readyStatus');
     if (readyStatus) readyStatus.innerHTML = statusText;
 });
+
 socket.on('newGameCountdown', (countdown) => {
     showModal('Nowa gra!', `Nowa runda rozpocznie się za: ${countdown}`, false);
     if (countdown <= 0) {
         setTimeout(() => { modal.style.display = 'none'; }, 500);
     }
 });
+
 socket.on('returnToLobby', () => {
+    releaseWakeLock();
     showScreen(gameLobby);
     cardRevealed = false; card.classList.remove('is-flipped'); card.style.display = 'block';
 });
+
+// Powiadomienie o rozłączeniu tylko w trakcie gry
 socket.on('playerDisconnected', (playerName) => {
-    toast.innerText = `Gracz ${playerName} opuścił grę.`;
-    toast.style.display = 'block';
-    setTimeout(() => { toast.style.display = 'none'; }, 3000);
+    if (!gameLobby.classList.contains('active')) {
+        toast.innerText = `Gracz ${playerName} opuścił grę.`;
+        toast.classList.add('show');
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000);
+    }
 });
+
 socket.on('gameInterrupted', () => {
+    releaseWakeLock();
     showModal('Gra przerwana!', 'Jeden z graczy opuścił grę. Wracacie do lobby.');
     setTimeout(() => {
         modal.style.display = 'none';
         showScreen(gameLobby);
     }, 3000);
 });
+
+// Obsługa odpowiedzi serwera na próbę ponownego połączenia
+socket.on('reconnectSuccess', (room) => {
+    console.log('Udało się wrócić do gry!', room);
+    
+    // Ustawienie aktualnego kodu pokoju na podstawie danych z sesji
+    const session = JSON.parse(sessionStorage.getItem('impostorSession'));
+    if(session) currentRoomCode = session.roomCode;
+
+    // Zaktualizuj sessionStorage nowym ID gniazda, ale zachowaj stary kod pokoju
+    sessionStorage.setItem('impostorSession', JSON.stringify({ roomCode: currentRoomCode, oldSocketId: socket.id }));
+
+    // Odśwież widok na podstawie otrzymanych danych
+    socket.emit('updateLobby', { players: room.players, settings: room.settings, hostId: room.hostId });
+    
+    // Prosta logika przywracania stanu - na razie zawsze wraca do lobby
+    showScreen(gameLobby);
+});
+
+socket.on('reconnectFailed', () => {
+    console.log('Nie udało się wrócić do gry. Sesja mogła wygasnąć.');
+    sessionStorage.removeItem('impostorSession');
+    showModal('Błąd', 'Nie udało się wrócić do gry. Dołącz ponownie.', true);
+    setTimeout(() => {
+        modal.style.display = 'none';
+        showScreen(startScreen);
+    }, 3000);
+});
+
+// Logika WakeLock
+let wakeLock = null;
+const requestWakeLock = async () => {
+  if ('wakeLock' in navigator) {
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+      console.log('Blokada wygaszania ekranu aktywowana!');
+    } catch (err) { console.error(`${err.name}, ${err.message}`); }
+  }
+};
+const releaseWakeLock = async () => {
+  if (wakeLock !== null) {
+    await wakeLock.release();
+    wakeLock = null;
+    console.log('Blokada wygaszania ekranu zwolniona.');
+  }
+};
