@@ -14,16 +14,20 @@
 <body>
 
     <div id="startScreen" class="screen active">
-    <img src="/assets/logo.svg" alt="Logo Gry" class="start-logo">
-    
-    <label for="playerNameInput" class="input-label">Wprowadź swoją nazwę</label>
-    <input type="text" id="playerNameInput">
-    
-    <hr>
-    <button id="createGameBtn">Utwórz nową grę</button>
-    <hr>
-    <button id="showJoinScreenBtn">Dołącz do gry</button>
+    <div class="start-screen-top">
+        <img src="/assets/logo.svg" alt="Logo Gry Impostor" class="start-logo">
+    </div>
+
+    <div class="start-screen-bottom">
+        <label for="playerNameInput" class="input-label">Wprowadź swoją nazwę</label>
+        <input type="text" id="playerNameInput">
+        <div class="start-buttons-container">
+            <button id="createGameBtn">Utwórz nową grę</button>
+            <button id="showJoinScreenBtn">Dołącz do gry</button>
+        </div>
+    </div>
 </div>
+
 
     <div id="joinScreen" class="screen">
         <h1>Dołącz do Gry</h1>

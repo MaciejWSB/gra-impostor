@@ -13,14 +13,13 @@
     --color-panel-border: #333;
     --color-text: #e0e0e0;
     --color-text-muted: #888;
-    --color-red: #e53935;
+    --color-red: #d32f2f;
+    --color-orange: #f57c00;
     --color-blue: #03a9f4;
     --color-yellow: #fdd835;
     --color-green: #66bb6a;
-    --color-grey-button: #424242;
     --border-radius: 12px;
-    --shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-    --transition-fast: all 0.2s ease-in-out;
+    --shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
 /* === RESET I STYLE PODSTAWOWE === */
@@ -36,7 +35,6 @@ html { font-size: 16px; }
 body {
     font-family: var(--font-primary);
     text-align: center;
-    /* Zmieniony gradient na czarno-szary */
     background: linear-gradient(-45deg, #232323, #1a1a1a, #2a2a2a, var(--color-bg));
     background-size: 400% 400%;
     color: var(--color-text);
@@ -48,38 +46,95 @@ body {
     animation: gradient-animation 25s ease infinite;
 }
 
-.screen { display: none; width: 90vw; max-width: 500px; }
+.screen { display: none; width: 100%; height: 100%; }
 .active { display: block; }
-hr { border: 1px solid var(--color-panel-border); margin: 25px 0; }
-h1, h2, h3 { font-family: var(--font-header); letter-spacing: 2px; }
+
+h1, h2, h3 {
+    font-family: var(--font-header);
+    letter-spacing: 2px;
+}
+
 h1 { font-size: 2.5rem; color: var(--color-text); }
 h2 { font-size: 1.4rem; color: var(--color-blue); }
 h3 { font-size: 1.1rem; color: var(--color-text-muted); }
 
 /* === EKRAN STARTOWY === */
-#startScreen { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; }
-.start-logo { width: 100%; max-width: 250px; height: auto; margin-bottom: 20px; }
-.input-label { display: block; font-family: var(--font-secondary); text-transform: uppercase; color: var(--color-text-muted); font-size: 1rem; margin-bottom: 10px; }
-#startScreen input { margin-top: 0; margin-bottom: 30px; }
-#startScreen button { width: 100%; max-width: 300px; font-size: 1rem; padding: 12px; margin: 8px 0; }
-#startScreen hr { display: none; }
-
-/* === PRZYCISKI === */
-button {
-    font-family: var(--font-header); font-size: 1rem; letter-spacing: 1.5px;
-    padding: 14px 25px; margin: 8px; border-radius: var(--border-radius);
-    border: none;
-    /* Przywrócenie niebieskiego koloru */
-    background-color: var(--color-blue);
-    color: white; cursor: pointer; box-shadow: var(--shadow);
-    transition: all 0.3s cubic-bezier(.25,.8,.25,1);
+#startScreen.active {
+    display: flex;
+    flex-direction: column;
 }
-button:disabled { background-color: #555; cursor: not-allowed; box-shadow: none; transform: translateY(0); }
-button:hover:not([disabled]) { background-color: #039be5; transform: translateY(-2px); box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4); }
+
+.start-screen-top {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #000000;
+}
+
+.start-screen-bottom {
+    padding: 30px;
+    border-top-left-radius: 30px;
+    border-top-right-radius: 30px;
+    background-image: linear-gradient(45deg, var(--color-red) 0%, var(--color-orange) 100%);
+    box-shadow: 0 -5px 30px rgba(0,0,0,0.5);
+}
+
+.start-logo {
+    width: 80%;
+    max-width: 280px;
+    height: auto;
+}
+
+.input-label {
+    display: block;
+    font-family: var(--font-secondary);
+    text-transform: uppercase;
+    color: #fff;
+    font-size: 1rem;
+    margin-bottom: 15px;
+}
+
+#startScreen input {
+    font-family: var(--font-primary);
+    font-size: 1rem;
+    padding: 12px 15px;
+    margin: 0 0 25px 0;
+    width: 100%;
+    max-width: 350px;
+    border-radius: var(--border-radius);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    background-color: rgba(0,0,0,0.2);
+    color: var(--color-text);
+    text-align: center;
+}
+#startScreen input:focus {
+    outline: none;
+    border-color: #fff;
+}
+
+.start-buttons-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+#startScreen button {
+    width: 100%;
+    max-width: 350px;
+    background-color: #000;
+    color: #fff;
+    border: 1px solid #333;
+}
+#startScreen button:hover {
+    background-color: #222;
+    transform: scale(1.05);
+}
 
 /* === POZOSTAŁE STYLE === */
-input, select { font-family: var(--font-primary); font-size: 1rem; padding: 12px 15px; margin: 10px 0; width: 100%; border-radius: var(--border-radius); border: 2px solid var(--color-panel-border); background-color: var(--color-panel); color: var(--color-text); text-align: center; transition: var(--transition-fast); }
-input:focus, select:focus { outline: none; border-color: var(--color-blue); }
+/* ... (reszta stylów, które już działały poprawnie, poniżej) ... */
+
 li { background-color: #34495e; margin: 8px 0; padding: 12px; border-radius: 8px; }
 .player-list-container { max-height: 165px; overflow-y: auto; margin: 10px 0; padding: 5px; border-radius: var(--border-radius); background-color: rgba(0,0,0,0.2); }
 .settings-panel { background-color: var(--color-panel); border: 1px solid var(--color-panel-border); border-radius: var(--border-radius); box-shadow: var(--shadow); padding: 10px 20px 20px 20px; margin-top: 20px; }
