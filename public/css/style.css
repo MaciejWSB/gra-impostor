@@ -3,33 +3,31 @@
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Bungee&display=swap');
 
-
 /* === ZMIENNE GLOBALNE === */
 :root {
     --font-header: 'Bungee', sans-serif;
     --font-primary: 'Poppins', sans-serif;
     --font-secondary: 'Montserrat', sans-serif;
-
-    /* Nowa paleta kolorów z logo */
-    --color-bg: #1a1a1a;
-    --color-panel: #2a2a2a;
-    --color-panel-border: #444;
-    --color-text: #f0f0f0;
+    --color-bg: #121212;
+    --color-panel: #1e1e1e;
+    --color-panel-border: #333;
+    --color-text: #e0e0e0;
     --color-text-muted: #888;
-    --color-red: #d32f2f;
-    --color-orange: #f57c00;
+    --color-red: #e53935;
     --color-blue: #03a9f4;
     --color-yellow: #fdd835;
     --color-green: #66bb6a;
+    --color-grey-button: #424242;
     --border-radius: 12px;
-    --shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    --shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    --transition-fast: all 0.2s ease-in-out;
 }
 
 /* === RESET I STYLE PODSTAWOWE === */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html { font-size: 16px; }
 
-@keyframes fire-gradient {
+@keyframes gradient-animation {
     0% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
@@ -38,7 +36,8 @@ html { font-size: 16px; }
 body {
     font-family: var(--font-primary);
     text-align: center;
-    background: linear-gradient(-45deg, var(--color-red), var(--color-orange), #232323, var(--color-bg));
+    /* Zmieniony gradient na czarno-szary */
+    background: linear-gradient(-45deg, #232323, #1a1a1a, #2a2a2a, var(--color-bg));
     background-size: 400% 400%;
     color: var(--color-text);
     display: flex;
@@ -46,101 +45,41 @@ body {
     align-items: center;
     min-height: 100vh;
     padding: 20px 0;
-    animation: fire-gradient 25s ease infinite;
+    animation: gradient-animation 25s ease infinite;
 }
 
 .screen { display: none; width: 90vw; max-width: 500px; }
 .active { display: block; }
-
-h1, h2, h3 {
-    font-family: var(--font-header);
-    letter-spacing: 2px;
-}
-
+hr { border: 1px solid var(--color-panel-border); margin: 25px 0; }
+h1, h2, h3 { font-family: var(--font-header); letter-spacing: 2px; }
 h1 { font-size: 2.5rem; color: var(--color-text); }
-h2 { font-size: 1.4rem; color: var(--color-orange); }
+h2 { font-size: 1.4rem; color: var(--color-blue); }
 h3 { font-size: 1.1rem; color: var(--color-text-muted); }
 
-/* === EKRAN STARTOWY (NOWY WYGLĄD) === */
-#startScreen {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-}
-
-.start-logo {
-    width: 100%;
-    max-width: 250px;
-    height: auto;
-    margin-bottom: 20px;
-}
-
-.input-label {
-    display: block;
-    font-family: var(--font-secondary);
-    text-transform: uppercase;
-    color: var(--color-text-muted);
-    font-size: 1rem;
-    margin-bottom: 10px;
-}
-
+/* === EKRAN STARTOWY === */
+#startScreen { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; }
+.start-logo { width: 100%; max-width: 250px; height: auto; margin-bottom: 20px; }
+.input-label { display: block; font-family: var(--font-secondary); text-transform: uppercase; color: var(--color-text-muted); font-size: 1rem; margin-bottom: 10px; }
 #startScreen input { margin-top: 0; margin-bottom: 30px; }
+#startScreen button { width: 100%; max-width: 300px; font-size: 1rem; padding: 12px; margin: 8px 0; }
+#startScreen hr { display: none; }
 
-#startScreen button {
-    width: 100%;
-    max-width: 300px;
-    font-size: 1rem;
-    padding: 12px;
-    margin: 8px 0;
-}
-/* Usunięcie linii hr */
-#startScreen hr {
-    display: none;
-}
-
-/* === PRZYCISKI (NOWY WYGLĄD Z GRADIENTEM) === */
+/* === PRZYCISKI === */
 button {
-    font-family: var(--font-header);
-    font-size: 1rem;
-    letter-spacing: 1.5px;
-    padding: 14px 25px;
-    margin: 8px;
-    border-radius: var(--border-radius);
-    border: 2px solid var(--color-orange);
-    background-image: linear-gradient(45deg, var(--color-red) 0%, var(--color-orange) 100%);
-    background-size: 200% auto;
-    color: white;
-    cursor: pointer;
-    box-shadow: var(--shadow);
+    font-family: var(--font-header); font-size: 1rem; letter-spacing: 1.5px;
+    padding: 14px 25px; margin: 8px; border-radius: var(--border-radius);
+    border: none;
+    /* Przywrócenie niebieskiego koloru */
+    background-color: var(--color-blue);
+    color: white; cursor: pointer; box-shadow: var(--shadow);
     transition: all 0.3s cubic-bezier(.25,.8,.25,1);
 }
+button:disabled { background-color: #555; cursor: not-allowed; box-shadow: none; transform: translateY(0); }
+button:hover:not([disabled]) { background-color: #039be5; transform: translateY(-2px); box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4); }
 
-button:disabled {
-    background-image: none;
-    background-color: #555;
-    border-color: #444;
-    cursor: not-allowed;
-    box-shadow: none;
-    transform: translateY(0);
-}
-
-button:hover:not([disabled]) {
-    background-position: right center;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4);
-}
-
-/* === POZOSTAŁE STYLE (dziedziczą część zmian) === */
-input, select {
-    font-family: var(--font-primary); font-size: 1rem; padding: 12px 15px;
-    margin: 10px 0; width: 100%; border-radius: var(--border-radius);
-    border: 2px solid var(--color-panel-border); background-color: var(--color-panel);
-    color: var(--color-text); text-align: center; transition: var(--transition-fast);
-}
-input:focus, select:focus { outline: none; border-color: var(--color-orange); }
-
+/* === POZOSTAŁE STYLE === */
+input, select { font-family: var(--font-primary); font-size: 1rem; padding: 12px 15px; margin: 10px 0; width: 100%; border-radius: var(--border-radius); border: 2px solid var(--color-panel-border); background-color: var(--color-panel); color: var(--color-text); text-align: center; transition: var(--transition-fast); }
+input:focus, select:focus { outline: none; border-color: var(--color-blue); }
 li { background-color: #34495e; margin: 8px 0; padding: 12px; border-radius: 8px; }
 .player-list-container { max-height: 165px; overflow-y: auto; margin: 10px 0; padding: 5px; border-radius: var(--border-radius); background-color: rgba(0,0,0,0.2); }
 .settings-panel { background-color: var(--color-panel); border: 1px solid var(--color-panel-border); border-radius: var(--border-radius); box-shadow: var(--shadow); padding: 10px 20px 20px 20px; margin-top: 20px; }
@@ -151,16 +90,8 @@ li { background-color: #34495e; margin: 8px 0; padding: 12px; border-radius: 8px
 #lobbyCategoryTile { width: 100%; max-width: 280px; padding: 15px; min-height: 150px; border: 2px solid var(--color-yellow); background-color: var(--color-bg); }
 #lobbyCategoryTile img { width: 60px; height: 60px; margin-bottom: 10px; }
 .difficulty-selector { display: flex; justify-content: center; gap: 10px; width: 100%; }
-.difficulty-btn {
-    flex-grow: 1; padding: 10px; font-size: 0.9em; border: 2px solid var(--color-panel-border); 
-    border-radius: var(--border-radius); box-shadow: none; transition: var(--transition-fast);
-    background-image: none; background-color: #424242; color: var(--color-text);
-}
-.difficulty-btn:hover:not([disabled]) { background-color: #555; }
-.difficulty-btn.selected {
-    box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
-    transform: scale(1.05); color: #111;
-}
+.difficulty-btn { flex-grow: 1; padding: 10px; font-size: 0.9em; border: 2px solid var(--color-panel-border); border-radius: var(--border-radius); box-shadow: none; transition: var(--transition-fast); background-color: var(--color-grey-button); color: var(--color-text); }
+.difficulty-btn.selected { box-shadow: 0 0 15px rgba(255, 255, 255, 0.2); transform: scale(1.05); color: #111; }
 .difficulty-btn[data-difficulty="easy"].selected { background-color: var(--color-yellow); }
 .difficulty-btn[data-difficulty="medium"].selected { background-color: var(--color-blue); }
 .difficulty-btn[data-difficulty="hard"].selected { background-color: var(--color-red); }
@@ -178,14 +109,14 @@ li { background-color: #34495e; margin: 8px 0; padding: 12px; border-radius: 8px
 .settings-panel.difficulty-medium input:checked + .slider { background-color: var(--color-blue); }
 .settings-panel.difficulty-hard input:checked + .slider { background-color: var(--color-red); }
 input:checked + .slider:before { transform: translateX(26px); }
-.exit-button { position: fixed; top: 15px; right: 15px; width: auto; font-size: 0.9rem; background-image: none; background-color: var(--color-red); }
+.exit-button { position: fixed; top: 15px; right: 15px; width: auto; font-size: 0.9rem; background-color: var(--color-red); }
 #gameScreen.active { display: flex; flex-direction: column; justify-content: center; align-items: center; position: fixed; width: 100%; height: 100%; }
 .card { width: 90%; max-width: 400px; height: 250px; perspective: 1000px; }
 .card-inner { position: relative; width: 100%; height: 100%; transition: transform 0.6s; transform-style: preserve-3d; }
 .card.is-flipped .card-inner { transform: rotateY(180deg); }
 .card-front, .card-back { position: absolute; width: 100%; height: 100%; -webkit-backface-visibility: hidden; backface-visibility: hidden; border-radius: var(--border-radius); display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; box-shadow: var(--shadow); }
 .card-front { background-color: var(--color-panel); border: 1px solid #444; transform: rotateY(180deg); }
-.card-back { background-image: linear-gradient(45deg, var(--color-red) 0%, var(--color-orange) 100%); cursor: pointer; transition: var(--transition-fast); }
+.card-back { background-color: var(--color-blue); cursor: pointer; transition: var(--transition-fast); }
 .role-impostor { color: var(--color-red); }
 .role-crewmate { color: var(--color-green); }
 #revealStatus, #turnCountdown { width: 100%; font-size: 1.2rem; position: absolute; bottom: 5vh; left: 50%; transform: translateX(-50%); }
